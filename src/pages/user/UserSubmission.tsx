@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getRiskConfiguration, getFieldOptions, submitUserData } from "@/services/api";
-import { RiskConfiguration, Field, UserSubmission } from "@/types/risk";
+import { RiskConfiguration, Field, UserSubmission as UserSubmissionType } from "@/types/risk";
 import { calculateRiskScore } from "@/utils/riskCalculator";
 
 interface FormData {
@@ -157,7 +157,7 @@ const UserSubmission = () => {
     }
     
     // Prepare submission data
-    const submission: UserSubmission = {
+    const submission: UserSubmissionType = {
       userId,
       configId: configuration.id,
       sections: Object.entries(formData).map(([sectionId, fields]) => ({
@@ -303,14 +303,14 @@ const UserSubmission = () => {
         className="space-y-4"
       >
         <TabsList className="w-full overflow-x-auto flex-nowrap">
-          {configuration.sections.map((section, index) => (
+          {configuration?.sections.map((section, index) => (
             <TabsTrigger key={section.id} value={index.toString()}>
               {section.name}
             </TabsTrigger>
           ))}
         </TabsList>
 
-        {configuration.sections.map((section, index) => (
+        {configuration?.sections.map((section, index) => (
           <TabsContent key={section.id} value={index.toString()}>
             <Card>
               <CardHeader>
