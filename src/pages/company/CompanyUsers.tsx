@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -186,7 +185,7 @@ const CompanyUsers = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Statuses</SelectItem>
+                  <SelectItem value="all_statuses">All Statuses</SelectItem>
                   <SelectItem value="Pending">Pending</SelectItem>
                   <SelectItem value="Approved">Approved</SelectItem>
                   <SelectItem value="Rejected">Rejected</SelectItem>
@@ -202,7 +201,7 @@ const CompanyUsers = () => {
                   </div>
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All Scores</SelectItem>
+                  <SelectItem value="all_scores">All Scores</SelectItem>
                   <SelectItem value="low">Low Risk (0-49%)</SelectItem>
                   <SelectItem value="medium">Medium Risk (50-69%)</SelectItem>
                   <SelectItem value="high">High Risk (70-100%)</SelectItem>
