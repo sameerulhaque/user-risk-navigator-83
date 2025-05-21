@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -261,6 +260,42 @@ const CompanyConfiguration = () => {
     });
   };
 
+  // Fixed function - use fieldValue.id instead of valueId
+  const updateFieldValueCondition2 = (
+    sectionId: number, 
+    fieldId: number, 
+    fieldValueId: number,  // Fixed parameter name to be clear
+    condition2Value: string
+  ) => {
+    if (!configuration) return;
+    
+    const updatedSections = configuration.sections.map(s => {
+      if (s.id === sectionId) {
+        const updatedFields = s.fields.map(f => {
+          if (f.id === fieldId) {
+            const updatedFieldValues = f.fieldValues.map(fv => {
+              if (fv.id === fieldValueId) {  // Use fieldValueId instead of valueId
+                return { ...fv, condition2: condition2Value };
+              }
+              return fv;
+            });
+            
+            return { ...f, fieldValues: updatedFieldValues };
+          }
+          return f;
+        });
+        
+        return { ...s, fields: updatedFields };
+      }
+      return s;
+    });
+
+    setConfiguration({
+      ...configuration,
+      sections: updatedSections,
+    });
+  };
+
   // Render field value configuration
   const renderFieldValue = (fieldValue: FieldValue, field: Field, section: Section) => {
     const isCustomCondition = isCustomConditionType(fieldValue.conditionType);
@@ -329,35 +364,12 @@ const CompanyConfiguration = () => {
                 <Input
                   id={`condition2-${section.id}-${field.id}-${fieldValue.id}`}
                   value={fieldValue.condition2 || ""}
-                  onChange={(e) => {
-                    if (!configuration) return;
-                    
-                    const updatedSections = configuration.sections.map(s => {
-                      if (s.id === section.id) {
-                        const updatedFields = s.fields.map(f => {
-                          if (f.id === field.id) {
-                            const updatedFieldValues = f.fieldValues.map(fv => {
-                              if (fv.id === valueId) {
-                                return { ...fv, condition2: e.target.value };
-                              }
-                              return fv;
-                            });
-                            
-                            return { ...f, fieldValues: updatedFieldValues };
-                          }
-                          return f;
-                        });
-                        
-                        return { ...s, fields: updatedFields };
-                      }
-                      return s;
-                    });
-
-                    setConfiguration({
-                      ...configuration,
-                      sections: updatedSections,
-                    });
-                  }}
+                  onChange={(e) => updateFieldValueCondition2(
+                    section.id, 
+                    field.id, 
+                    fieldValue.id,  // Use fieldValue.id directly
+                    e.target.value
+                  )}
                   className="mt-1 border-gray-200 bg-white"
                   placeholder="Enter second value"
                 />
