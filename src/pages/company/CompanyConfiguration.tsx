@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -266,7 +265,7 @@ const CompanyConfiguration = () => {
           <div>
             <Label htmlFor={`condition-type-${section.id}-${field.id}-${fieldValue.id}`}>Condition Type</Label>
             <Select
-              value={fieldValue.conditionType}
+              value={fieldValue.conditionType || "equals"} // Ensure there's always a default value
               onValueChange={(value) => updateFieldValueConditionType(
                 section.id, 
                 field.id, 
@@ -282,9 +281,9 @@ const CompanyConfiguration = () => {
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
-                  <SelectItem value="=">Equals</SelectItem>
-                  <SelectItem value=">">Greater Than</SelectItem>
-                  <SelectItem value="<">Less Than</SelectItem>
+                  <SelectItem value="equals">Equals</SelectItem>
+                  <SelectItem value="greaterThan">Greater Than</SelectItem>
+                  <SelectItem value="lessThan">Less Than</SelectItem>
                   <SelectItem value="between">Between</SelectItem>
                   <SelectItem value="contains">Contains</SelectItem>
                   <SelectItem value="isEmpty">Is Empty</SelectItem>
@@ -300,7 +299,7 @@ const CompanyConfiguration = () => {
             <Label htmlFor={`condition-${section.id}-${field.id}-${fieldValue.id}`}>Condition Value 1</Label>
             <Input
               id={`condition-${section.id}-${field.id}-${fieldValue.id}`}
-              value={fieldValue.condition}
+              value={fieldValue.condition || ""}
               onChange={(e) => updateFieldValueCondition(
                 section.id, 
                 field.id, 
@@ -316,8 +315,38 @@ const CompanyConfiguration = () => {
               <Label htmlFor={`condition2-${section.id}-${field.id}-${fieldValue.id}`}>Condition Value 2</Label>
               <Input
                 id={`condition2-${section.id}-${field.id}-${fieldValue.id}`}
-                placeholder="Enter second value"
+                value={fieldValue.condition2 || ""}
+                onChange={(e) => {
+                  if (!configuration) return;
+                  
+                  const updatedSections = configuration.sections.map(s => {
+                    if (s.id === section.id) {
+                      const updatedFields = s.fields.map(f => {
+                        if (f.id === field.id) {
+                          const updatedFieldValues = f.fieldValues.map(fv => {
+                            if (fv.id === fieldValue.id) {
+                              return { ...fv, condition2: e.target.value };
+                            }
+                            return fv;
+                          });
+                          
+                          return { ...f, fieldValues: updatedFieldValues };
+                        }
+                        return f;
+                      });
+                      
+                      return { ...s, fields: updatedFields };
+                    }
+                    return s;
+                  });
+
+                  setConfiguration({
+                    ...configuration,
+                    sections: updatedSections,
+                  });
+                }}
                 className="mt-1 border-gray-200"
+                placeholder="Enter second value"
               />
             </div>
           )}

@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Field } from "@/types/risk";
 import { Label } from "@/components/ui/label";
@@ -74,7 +73,7 @@ const SectionFieldsList = ({
         
         return (
           <Select
-            value={value.toString()}
+            value={value ? value.toString() : undefined}
             onValueChange={(val) => handleInputChange(sectionId, field.id, Number(val))}
             disabled={submitting || isLoading}
           >
