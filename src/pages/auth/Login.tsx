@@ -44,10 +44,6 @@ const Login = () => {
     setIsLoading(true);
     try {
       await login(data.email, data.password);
-      toast({
-        title: "Success",
-        description: "You have successfully logged in",
-      });
       navigate("/home");
     } catch (error) {
       console.error("Login error:", error);
@@ -63,14 +59,18 @@ const Login = () => {
 
   return (
     <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
-      <Card className="w-full max-w-md shadow-lg animate-fade-in">
-        <CardHeader className="space-y-1 text-center">
+      <Card className="w-full max-w-md shadow-xl border-blue-100 animate-fade-in">
+        <CardHeader className="space-y-1 text-center bg-gradient-to-r from-blue-50 to-white">
           <CardTitle className="text-2xl font-bold text-blue-700">Welcome back</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-blue-600">
             Enter your credentials to access your account
           </CardDescription>
+          <div className="mt-4 space-y-2 text-sm rounded-lg bg-blue-50 p-3 text-blue-800">
+            <p><strong>Admin Login:</strong> john@example.com / password</p>
+            <p><strong>User Login:</strong> jane@example.com / password</p>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -78,9 +78,13 @@ const Login = () => {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-blue-700">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your email" {...field} />
+                      <Input 
+                        placeholder="Enter your email" 
+                        {...field} 
+                        className="border-blue-200 focus:border-blue-400 transition-all"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -91,9 +95,14 @@ const Login = () => {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-blue-700">Password</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Enter your password" {...field} />
+                      <Input 
+                        type="password" 
+                        placeholder="Enter your password" 
+                        {...field} 
+                        className="border-blue-200 focus:border-blue-400 transition-all"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -101,7 +110,7 @@ const Login = () => {
               />
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
                 disabled={isLoading}
               >
                 {isLoading ? <LoadingSpinner size="sm" /> : "Sign In"}
@@ -109,10 +118,10 @@ const Login = () => {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2 text-center text-sm">
+        <CardFooter className="flex flex-col space-y-2 text-center text-sm border-t border-blue-50 pt-4">
           <div>
             Don't have an account?{" "}
-            <Link to="/register" className="text-blue-600 hover:underline">
+            <Link to="/register" className="text-blue-600 hover:underline font-medium">
               Register
             </Link>
           </div>

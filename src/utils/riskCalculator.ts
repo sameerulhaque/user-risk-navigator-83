@@ -1,20 +1,22 @@
 
-import { Condition, Field, RiskConfiguration, RiskScore, UserSubmission } from "@/types/risk";
+import { FieldValue, Field, RiskConfiguration, RiskScore, UserSubmission } from "@/types/risk";
 
 // Evaluate a single condition against a field value
-export function evaluateCondition(condition: Condition, value: any): boolean {
-  switch (condition.operator) {
+export function evaluateCondition(fieldValue: FieldValue, value: any): boolean {
+  switch (fieldValue.condition) {
     case '>':
-      return Number(value) > Number(condition.value);
+      return Number(value) > Number(fieldValue.value);
     case '<':
-      return Number(value) < Number(condition.value);
+      return Number(value) < Number(fieldValue.value);
     case '=':
-      return value === condition.value;
+      return value === fieldValue.value;
     case 'between':
-      return Number(value) >= Number(condition.value) && 
-             Number(value) <= Number(condition.secondaryValue);
+      // Note: For 'between' condition, value should be a range array or similar structure
+      // This is a simplified implementation
+      return Number(value) >= Number(fieldValue.value.split('-')[0]) && 
+             Number(value) <= Number(fieldValue.value.split('-')[1]);
     case 'contains':
-      return String(value).includes(String(condition.value));
+      return String(value).includes(String(fieldValue.value));
     case 'isEmpty':
       return value === undefined || value === null || value === '';
     case 'isNotEmpty':
@@ -24,15 +26,15 @@ export function evaluateCondition(condition: Condition, value: any): boolean {
   }
 }
 
-// Calculate the score for a single field based on its value and conditions
+// Calculate the score for a single field based on its value and field values
 export function calculateFieldScore(field: Field, fieldValue: any): number {
-  // Find the matching condition
-  const matchingCondition = field.conditions.find(condition => 
-    evaluateCondition(condition, fieldValue)
+  // Find the matching field value
+  const matchingFieldValue = field.fieldValues.find(fv => 
+    evaluateCondition(fv, fieldValue)
   );
 
-  // Return the weightage if a condition matches
-  return matchingCondition ? matchingCondition.weightage : 0;
+  // Return the weightage if a match is found
+  return matchingFieldValue ? matchingFieldValue.weightage : 0;
 }
 
 // Calculate risk score for a complete user submission
@@ -92,9 +94,9 @@ export function getRiskLevel(score: number): 'low' | 'medium' | 'high' {
 // Get color for risk level
 export function getRiskColor(level: 'low' | 'medium' | 'high'): string {
   switch (level) {
-    case 'low': return 'text-risk-low';
-    case 'medium': return 'text-risk-medium';
-    case 'high': return 'text-risk-high';
+    case 'low': return 'text-green-500';
+    case 'medium': return 'text-amber-500';
+    case 'high': return 'text-red-500';
     default: return 'text-gray-500';
   }
 }
@@ -102,9 +104,9 @@ export function getRiskColor(level: 'low' | 'medium' | 'high'): string {
 // Get background color for risk level
 export function getRiskBgColor(level: 'low' | 'medium' | 'high'): string {
   switch (level) {
-    case 'low': return 'bg-risk-low';
-    case 'medium': return 'bg-risk-medium';
-    case 'high': return 'bg-risk-high';
-    default: return 'bg-gray-500';
+    case 'low': return 'bg-green-100';
+    case 'medium': return 'bg-amber-100';
+    case 'high': return 'bg-red-100';
+    default: return 'bg-gray-100';
   }
 }

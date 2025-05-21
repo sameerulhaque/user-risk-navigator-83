@@ -222,7 +222,7 @@ const CompanyConfiguration = () => {
             >
               <SelectTrigger 
                 id={`condition-${section.id}-${field.id}-${fieldValue.id}`}
-                className="mt-1"
+                className="mt-1 border-blue-200"
               >
                 <SelectValue placeholder="Select condition" />
               </SelectTrigger>
@@ -244,7 +244,7 @@ const CompanyConfiguration = () => {
         <div>
           <Label 
             htmlFor={`weightage-${section.id}-${field.id}-${fieldValue.id}`}
-            className="mb-1 block"
+            className="mb-1 block text-blue-700"
           >
             Risk Weightage: {fieldValue.weightage}%
           </Label>
@@ -279,7 +279,7 @@ const CompanyConfiguration = () => {
 
     return (
       <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-blue-100 rounded-md overflow-hidden mb-4">
-        <AccordionTrigger className="px-4 py-3 bg-blue-50 hover:bg-blue-100">
+        <AccordionTrigger className="px-4 py-3 bg-gradient-to-r from-blue-50 to-white hover:bg-blue-100">
           <span className="font-medium text-blue-700">{field.name}</span>
         </AccordionTrigger>
         <AccordionContent className="px-4 py-3">
@@ -350,15 +350,15 @@ const CompanyConfiguration = () => {
   if (!configuration) {
     return (
       <div className="text-center py-8">
-        <h3 className="text-xl font-medium mb-2">No Configuration Found</h3>
+        <h3 className="text-xl font-medium mb-2 text-blue-700">No Configuration Found</h3>
         <p className="text-muted-foreground">Please create a new risk configuration.</p>
-        <Button className="mt-4">Create New Configuration</Button>
+        <Button className="mt-4 bg-blue-600 hover:bg-blue-700">Create New Configuration</Button>
       </div>
     );
   }
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <PageHeader
         title="Risk Configuration"
         description="Configure risk scoring parameters and rules"
@@ -366,97 +366,109 @@ const CompanyConfiguration = () => {
         onAction={handleSaveConfiguration}
       />
 
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle>Configuration Details</CardTitle>
-          <CardDescription>
+      <Card className="mb-6 shadow-md border-blue-100">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+          <CardTitle className="text-blue-700">Configuration Details</CardTitle>
+          <CardDescription className="text-blue-600">
             Version {configuration.version} • Last updated {new Date().toLocaleDateString()}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="config-name">Configuration Name</Label>
+              <Label htmlFor="config-name" className="text-blue-700">Configuration Name</Label>
               <Input
                 id="config-name"
                 value={configuration.name}
                 onChange={(e) => setConfiguration({ ...configuration, name: e.target.value })}
-                className="mt-1"
+                className="mt-1 border-blue-200 focus:border-blue-400"
               />
             </div>
             <div>
-              <Label htmlFor="config-version">Version</Label>
+              <Label htmlFor="config-version" className="text-blue-700">Version</Label>
               <Input
                 id="config-version"
                 value={configuration.version}
                 onChange={(e) => setConfiguration({ ...configuration, version: e.target.value })}
-                className="mt-1"
+                className="mt-1 border-blue-200 focus:border-blue-400"
               />
             </div>
           </div>
         </CardContent>
       </Card>
 
-      <Tabs
-        value={activeSection}
-        onValueChange={setActiveSection}
-        className="space-y-4"
-      >
-        <TabsList className="w-full overflow-x-auto flex-nowrap">
+      <div className="bg-white rounded-lg shadow-md mb-6 p-1">
+        <Tabs
+          value={activeSection}
+          onValueChange={setActiveSection}
+          className="space-y-4"
+        >
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="inline-flex w-full overflow-x-auto flex-nowrap bg-blue-50 p-1">
+              {configuration.sections.map((section, index) => (
+                <TabsTrigger 
+                  key={section.id} 
+                  value={index.toString()} 
+                  className="whitespace-nowrap py-2 px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  {section.name}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
+
           {configuration.sections.map((section, index) => (
-            <TabsTrigger key={section.id} value={index.toString()} className="whitespace-nowrap">
-              {section.name}
-            </TabsTrigger>
-          ))}
-        </TabsList>
-
-        {configuration.sections.map((section, index) => (
-          <TabsContent key={section.id} value={index.toString()}>
-            <Card>
-              <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
-                <CardTitle>{section.name}</CardTitle>
-                <CardDescription>
-                  Section Weightage: {section.weightage}%
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="pt-6">
-                <div className="mb-8">
-                  <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block">
-                    Section Weightage
-                  </Label>
-                  <Slider
-                    id={`section-weightage-${section.id}`}
-                    value={[section.weightage]}
-                    min={0}
-                    max={100}
-                    step={1}
-                    className="my-2"
-                    onValueChange={([value]) => updateSectionWeightage(section.id, value)}
-                  />
-                  <div className="flex justify-between text-xs text-muted-foreground">
-                    <span>0%</span>
-                    <span>50%</span>
-                    <span>100%</span>
+            <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
+              <Card className="border-blue-100 shadow-md">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+                  <CardTitle className="text-blue-700">{section.name}</CardTitle>
+                  <CardDescription className="text-blue-600">
+                    Section Weightage: {section.weightage}%
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="pt-6">
+                  <div className="mb-8 bg-white p-4 rounded-lg shadow-sm">
+                    <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block text-blue-700">
+                      Section Weightage
+                    </Label>
+                    <Slider
+                      id={`section-weightage-${section.id}`}
+                      value={[section.weightage]}
+                      min={0}
+                      max={100}
+                      step={1}
+                      className="my-2"
+                      onValueChange={([value]) => updateSectionWeightage(section.id, value)}
+                    />
+                    <div className="flex justify-between text-xs text-muted-foreground">
+                      <span>0%</span>
+                      <span>50%</span>
+                      <span>100%</span>
+                    </div>
                   </div>
-                </div>
 
-                <h3 className="text-lg font-medium mb-4 text-blue-700">Fields</h3>
-                <Accordion type="multiple" className="space-y-2">
-                  {section.fields.map(field => renderField(field, section))}
-                </Accordion>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+                  <h3 className="text-lg font-medium mb-4 text-blue-700 border-b border-blue-100 pb-2">Fields</h3>
+                  <Accordion type="multiple" className="space-y-2">
+                    {section.fields.map(field => renderField(field, section))}
+                  </Accordion>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
+      </div>
 
-      <div className="flex justify-end mt-6">
+      <div className="flex justify-end mt-6 mb-8">
         <Button
           onClick={handleSaveConfiguration}
           disabled={isSaving}
-          className="bg-blue-600 hover:bg-blue-700"
+          className="bg-blue-600 hover:bg-blue-700 shadow-md transition-all"
         >
-          {isSaving ? "Saving..." : "Save Configuration"}
+          {isSaving ? (
+            <div className="flex items-center gap-2">
+              <LoadingSpinner size="sm" /> Saving...
+            </div>
+          ) : "Save Configuration"}
         </Button>
       </div>
     </div>

@@ -214,7 +214,6 @@ class UserService extends ApiService {
     localStorage.removeItem('isAdmin');
     this.isAuthenticated = false;
     this.currentUser = null;
-    window.location.href = '/';
   }
 
   // Check authentication status

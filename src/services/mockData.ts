@@ -1,4 +1,3 @@
-
 import { RiskConfiguration } from "@/types/risk";
 
 // Mock risk configuration with all the requested sections and fields
@@ -18,7 +17,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/customer-types",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 102,
@@ -26,7 +25,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/occupation-types",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 103,
@@ -34,7 +33,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/fund-sources",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 104,
@@ -42,7 +41,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/kyc-levels",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 105,
@@ -50,7 +49,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/transaction-history",
           required: false,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -65,7 +64,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/residence-types",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 202,
@@ -73,49 +72,49 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/transaction-frequency",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 203,
           name: "Transaction Volume",
           type: "number",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 204,
           name: "First-Time Transaction with Beneficiary",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 205,
           name: "Multiple Transactions to Different Beneficiaries",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 206,
           name: "Round Amount Transactions",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 207,
           name: "High-Cash Transactions",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 208,
           name: "Abnormal Transaction Timing",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 209,
@@ -123,14 +122,14 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/transaction-purposes",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 210,
           name: "Linked Transactions",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 211,
@@ -138,7 +137,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/payment-methods",
           required: true,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -153,7 +152,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/verification-levels",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 302,
@@ -161,14 +160,14 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/relationships",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 303,
           name: "Multiple Senders to Beneficiary",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 304,
@@ -176,7 +175,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/country-risks",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 305,
@@ -184,7 +183,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/transaction-patterns",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 306,
@@ -192,7 +191,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/account-types",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 307,
@@ -200,7 +199,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/entity-types",
           required: true,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -214,7 +213,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           name: "Age of Customer",
           type: "number",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 402,
@@ -222,7 +221,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/countries",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 403,
@@ -230,21 +229,21 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/country-risks",
           required: true,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 404,
           name: "Dual Citizenship or Past Residency",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 405,
           name: "Transactions from High-Risk Cities",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -259,7 +258,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/business-types",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 502,
@@ -267,28 +266,28 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/job-types",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 503,
           name: "Self-Employed Without Clear Income Documentation",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 504,
           name: "Frequent Large Deposits Not Matching Stated Income",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 505,
           name: "Unverified Source of Wealth",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -302,35 +301,35 @@ export const mockRiskConfiguration: RiskConfiguration = {
           name: "Sanctioned Customer",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 602,
           name: "Sanctioned Beneficiary",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 603,
           name: "Politically Exposed Person (PEP)",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 604,
           name: "Linked to a Suspicious Network",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 605,
           name: "Previously Flagged for Suspicious Activity Reports (SARs)",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -345,42 +344,42 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/ip-risks",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 702,
           name: "Multiple Accounts on Same Device",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 703,
           name: "Use of VPN/Proxy",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 704,
           name: "Unusual Login Behavior",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 705,
           name: "Use of Disposable Phone Numbers",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 706,
           name: "Behavioral Anomalies",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 707,
@@ -388,7 +387,7 @@ export const mockRiskConfiguration: RiskConfiguration = {
           type: "select",
           valueApi: "/api/location-matches",
           required: false,
-          conditions: []
+          fieldValues: []
         }
       ]
     },
@@ -402,42 +401,42 @@ export const mockRiskConfiguration: RiskConfiguration = {
           name: "High Number of Small Transactions",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 802,
           name: "Cryptocurrency Transactions",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 803,
           name: "Frequent Cancellations and Refunds",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 804,
           name: "Large Transactions Immediately After Account Creation",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 805,
           name: "Use of Multiple Linked Accounts",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         },
         {
           id: 806,
           name: "Third-Party Transactions (Initiator ≠ Receiver)",
           type: "checkbox",
           required: false,
-          conditions: []
+          fieldValues: []
         }
       ]
     }

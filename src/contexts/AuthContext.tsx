@@ -1,15 +1,15 @@
 
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { userService, User, LoginCredentials, RegisterData } from '@/services/userService';
+import { userService, User } from '@/services/userService';
 import { useToast } from '@/hooks/use-toast';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isAdmin: boolean;
-  login: (credentials: LoginCredentials) => Promise<boolean>;
-  register: (data: RegisterData) => Promise<boolean>;
+  login: (email: string, password: string) => Promise<void>;
+  register: (fullName: string, email: string, password: string, phone?: string) => Promise<void>;
   logout: () => void;
   loading: boolean;
 }
@@ -39,10 +39,10 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     initAuth();
   }, []);
 
-  const login = async (credentials: LoginCredentials): Promise<boolean> => {
+  const login = async (email: string, password: string): Promise<void> => {
     setLoading(true);
     try {
-      const response = await userService.login(credentials);
+      const response = await userService.login({ email, password });
       
       if (response.isSuccess && response.value) {
         setUser(response.value);
@@ -50,14 +50,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           title: "Login successful",
           description: "Welcome back!",
         });
-        return true;
       } else {
         toast({
           title: "Login failed",
           description: response.errors[0] || "Invalid credentials",
           variant: "destructive",
         });
-        return false;
       }
     } catch (error) {
       toast({
@@ -65,16 +63,15 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "An unexpected error occurred",
         variant: "destructive",
       });
-      return false;
     } finally {
       setLoading(false);
     }
   };
 
-  const register = async (data: RegisterData): Promise<boolean> => {
+  const register = async (fullName: string, email: string, password: string, phone?: string): Promise<void> => {
     setLoading(true);
     try {
-      const response = await userService.register(data);
+      const response = await userService.register({ fullName, email, password, phone });
       
       if (response.isSuccess && response.value) {
         setUser(response.value);
@@ -82,14 +79,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           title: "Registration successful",
           description: "Your account has been created",
         });
-        return true;
       } else {
         toast({
           title: "Registration failed",
           description: response.errors[0] || "Could not create account",
           variant: "destructive",
         });
-        return false;
       }
     } catch (error) {
       toast({
@@ -97,7 +92,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         description: "An unexpected error occurred",
         variant: "destructive",
       });
-      return false;
     } finally {
       setLoading(false);
     }

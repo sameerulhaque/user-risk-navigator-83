@@ -55,10 +55,6 @@ const Register = () => {
     setIsLoading(true);
     try {
       await register(data.fullName, data.email, data.password, data.phone);
-      toast({
-        title: "Success",
-        description: "Account created successfully",
-      });
       navigate("/home");
     } catch (error) {
       console.error("Registration error:", error);
@@ -74,14 +70,14 @@ const Register = () => {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
-      <Card className="w-full max-w-md shadow-lg animate-fade-in">
-        <CardHeader className="space-y-1 text-center">
+      <Card className="w-full max-w-md shadow-xl border-blue-100 animate-fade-in">
+        <CardHeader className="space-y-1 text-center bg-gradient-to-r from-blue-50 to-white">
           <CardTitle className="text-2xl font-bold text-blue-700">Create an account</CardTitle>
-          <CardDescription>
+          <CardDescription className="text-blue-600">
             Enter your details to create your account
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
               <FormField
@@ -89,9 +85,13 @@ const Register = () => {
                 name="fullName"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Full Name</FormLabel>
+                    <FormLabel className="text-blue-700">Full Name</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your full name" {...field} />
+                      <Input 
+                        placeholder="Enter your full name" 
+                        {...field} 
+                        className="border-blue-200 focus:border-blue-400 transition-all"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -102,9 +102,13 @@ const Register = () => {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email</FormLabel>
+                    <FormLabel className="text-blue-700">Email</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your email" {...field} />
+                      <Input 
+                        placeholder="Enter your email" 
+                        {...field} 
+                        className="border-blue-200 focus:border-blue-400 transition-all"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -115,12 +119,13 @@ const Register = () => {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Password</FormLabel>
+                    <FormLabel className="text-blue-700">Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="Enter your password"
                         {...field}
+                        className="border-blue-200 focus:border-blue-400 transition-all"
                       />
                     </FormControl>
                     <FormMessage />
@@ -132,12 +137,13 @@ const Register = () => {
                 name="confirmPassword"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Confirm Password</FormLabel>
+                    <FormLabel className="text-blue-700">Confirm Password</FormLabel>
                     <FormControl>
                       <Input
                         type="password"
                         placeholder="Confirm your password"
                         {...field}
+                        className="border-blue-200 focus:border-blue-400 transition-all"
                       />
                     </FormControl>
                     <FormMessage />
@@ -149,9 +155,13 @@ const Register = () => {
                 name="phone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Phone (Optional)</FormLabel>
+                    <FormLabel className="text-blue-700">Phone (Optional)</FormLabel>
                     <FormControl>
-                      <Input placeholder="Enter your phone number" {...field} />
+                      <Input 
+                        placeholder="Enter your phone number" 
+                        {...field} 
+                        className="border-blue-200 focus:border-blue-400 transition-all"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -159,7 +169,7 @@ const Register = () => {
               />
               <Button
                 type="submit"
-                className="w-full"
+                className="w-full bg-blue-600 hover:bg-blue-700 transition-colors"
                 disabled={isLoading}
               >
                 {isLoading ? <LoadingSpinner size="sm" /> : "Register"}
@@ -167,10 +177,10 @@ const Register = () => {
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2 text-center text-sm">
+        <CardFooter className="flex flex-col space-y-2 text-center text-sm border-t border-blue-50 pt-4">
           <div>
             Already have an account?{" "}
-            <Link to="/login" className="text-blue-600 hover:underline">
+            <Link to="/login" className="text-blue-600 hover:underline font-medium">
               Sign in
             </Link>
           </div>
