@@ -11,6 +11,7 @@ import LoadingSpinner from "@/components/LoadingSpinner";
 import { getUserProfiles, updateUserStatus } from "@/services/api";
 import { PaginatedResponse } from "@/types/api";
 import { UserProfile } from "@/types/risk";
+import { Search, Filter, Check, X } from "lucide-react";
 
 const CompanyUsers = () => {
   const [users, setUsers] = useState<PaginatedResponse<UserProfile> | null>(null);
@@ -30,6 +31,7 @@ const CompanyUsers = () => {
       const searchQuery: Record<string, string> = {};
       if (statusFilter) searchQuery.status = statusFilter;
       if (scoreRangeFilter) searchQuery.scoreRange = scoreRangeFilter;
+      if (searchTerm) searchQuery.search = searchTerm;
 
       const response = await getUserProfiles(page, pageSize, searchQuery);
       if (response.isSuccess && response.value) {
@@ -102,6 +104,7 @@ const CompanyUsers = () => {
   };
 
   const handleSearch = () => {
+    setCurrentPage(1);
     fetchUsers(1);
   };
 
@@ -109,13 +112,14 @@ const CompanyUsers = () => {
     if (!users || users.totalPages <= 1) return null;
 
     const pages = [];
-    for (let i = 1; i <= users.totalPages; i++) {
+    for (let i = 1; i <= Math.min(users.totalPages, 5); i++) {
       pages.push(
         <Button
           key={i}
           variant={currentPage === i ? "default" : "outline"}
           size="sm"
           onClick={() => handlePageChange(i)}
+          className={currentPage === i ? "bg-blue-600 hover:bg-blue-700" : "hover:bg-blue-50"}
         >
           {i}
         </Button>
@@ -123,21 +127,36 @@ const CompanyUsers = () => {
     }
 
     return (
-      <div className="flex justify-center gap-2 mt-6">
+      <div className="flex justify-center gap-2 mt-6 animate-fade-in">
         <Button
           variant="outline"
           size="sm"
           disabled={currentPage === 1}
           onClick={() => handlePageChange(currentPage - 1)}
+          className="hover:bg-blue-50"
         >
           Previous
         </Button>
         {pages}
+        {users.totalPages > 5 && (
+          <span className="flex items-center text-sm px-2">...</span>
+        )}
+        {users.totalPages > 5 && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(users.totalPages)}
+            className="hover:bg-blue-50"
+          >
+            {users.totalPages}
+          </Button>
+        )}
         <Button
           variant="outline"
           size="sm"
           disabled={currentPage === users.totalPages}
           onClick={() => handlePageChange(currentPage + 1)}
+          className="hover:bg-blue-50"
         >
           Next
         </Button>
@@ -146,22 +165,25 @@ const CompanyUsers = () => {
   };
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <PageHeader
         title="User Management"
         description="View and manage all user risk assessments"
       />
 
-      <Card className="mb-6">
+      <Card className="mb-6 card-elevated">
         <CardHeader>
-          <CardTitle>Filters</CardTitle>
+          <CardTitle className="text-blue-800">Filters</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Select value={statusFilter} onValueChange={setStatusFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by Status" />
+                <SelectTrigger className="border-blue-200">
+                  <div className="flex items-center">
+                    <Filter className="w-4 h-4 mr-2 text-blue-600" />
+                    <SelectValue placeholder="Filter by Status" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All Statuses</SelectItem>
@@ -173,8 +195,11 @@ const CompanyUsers = () => {
             </div>
             <div>
               <Select value={scoreRangeFilter} onValueChange={setScoreRangeFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by Score Range" />
+                <SelectTrigger className="border-blue-200">
+                  <div className="flex items-center">
+                    <Filter className="w-4 h-4 mr-2 text-blue-600" />
+                    <SelectValue placeholder="Filter by Score Range" />
+                  </div>
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="">All Scores</SelectItem>
@@ -185,12 +210,21 @@ const CompanyUsers = () => {
               </Select>
             </div>
             <div className="flex gap-2">
-              <Input
-                placeholder="Search by name or email"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-              <Button onClick={handleSearch}>Search</Button>
+              <div className="relative flex-1">
+                <Input
+                  placeholder="Search by name or email"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="pl-9 border-blue-200"
+                />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-blue-600" />
+              </div>
+              <Button 
+                onClick={handleSearch}
+                className="bg-blue-600 hover:bg-blue-700 transition-colors"
+              >
+                Search
+              </Button>
             </div>
           </div>
         </CardContent>
@@ -199,40 +233,40 @@ const CompanyUsers = () => {
       {loading ? (
         <LoadingSpinner />
       ) : (
-        <Card>
+        <Card className="card-elevated">
           <CardContent className="pt-6">
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
-                    <th className="text-left py-3 px-4 font-medium">User</th>
-                    <th className="text-left py-3 px-4 font-medium">Submission Date</th>
-                    <th className="text-left py-3 px-4 font-medium">Risk Score</th>
-                    <th className="text-left py-3 px-4 font-medium">Status</th>
-                    <th className="text-left py-3 px-4 font-medium">Actions</th>
+                  <tr className="border-b border-blue-100">
+                    <th className="text-left py-3 px-4 font-medium text-blue-800">User</th>
+                    <th className="text-left py-3 px-4 font-medium text-blue-800">Submission Date</th>
+                    <th className="text-left py-3 px-4 font-medium text-blue-800">Risk Score</th>
+                    <th className="text-left py-3 px-4 font-medium text-blue-800">Status</th>
+                    <th className="text-left py-3 px-4 font-medium text-blue-800">Actions</th>
                   </tr>
                 </thead>
                 <tbody>
                   {users && users.data.length > 0 ? (
                     users.data.map((user) => (
-                      <tr key={user.id} className="border-b hover:bg-muted/50">
+                      <tr key={user.id} className="border-b hover:bg-blue-50 transition-colors">
                         <td className="py-3 px-4">
-                          <div>
+                          <div className="animate-fade-in">
                             <div className="font-medium">{user.name}</div>
                             <div className="text-xs text-muted-foreground">{user.email}</div>
                           </div>
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 animate-fade-in">
                           {user.submissionDate ? new Date(user.submissionDate).toLocaleDateString() : '-'}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 animate-fade-in">
                           {user.riskScore !== undefined ? (
                             <RiskScoreBadge score={user.riskScore} />
                           ) : (
                             '-'
                           )}
                         </td>
-                        <td className="py-3 px-4">
+                        <td className="py-3 px-4 animate-fade-in">
                           <span className={`px-2 py-1 rounded-full text-xs font-medium ${
                             user.status === 'Approved' ? 'bg-green-100 text-green-800' :
                             user.status === 'Rejected' ? 'bg-red-100 text-red-800' :
@@ -242,23 +276,24 @@ const CompanyUsers = () => {
                           </span>
                         </td>
                         <td className="py-3 px-4">
-                          <div className="flex gap-2">
+                          <div className="flex gap-2 animate-fade-in">
                             <Button
                               variant="outline"
                               size="sm"
                               disabled={user.status === 'Approved' || processing[user.id]}
                               onClick={() => handleUpdateStatus(user.id, 'Approved')}
+                              className="flex items-center border-green-200 text-green-700 hover:bg-green-50"
                             >
-                              Approve
+                              <Check className="w-3 h-3 mr-1" /> Approve
                             </Button>
                             <Button
                               variant="outline"
                               size="sm"
-                              className="text-risk-high"
                               disabled={user.status === 'Rejected' || processing[user.id]}
                               onClick={() => handleUpdateStatus(user.id, 'Rejected')}
+                              className="flex items-center border-red-200 text-red-700 hover:bg-red-50"
                             >
-                              Reject
+                              <X className="w-3 h-3 mr-1" /> Reject
                             </Button>
                           </div>
                         </td>

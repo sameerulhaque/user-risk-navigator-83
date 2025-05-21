@@ -5,14 +5,14 @@ import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Progress } from "@/components/ui/progress";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
+import SectionFieldsList from "@/components/SectionFieldsList";
 import { getRiskConfiguration, getFieldOptions, submitUserData } from "@/services/api";
 import { RiskConfiguration, Field, UserSubmission as UserSubmissionType } from "@/types/risk";
 import { calculateRiskScore } from "@/utils/riskCalculator";
+import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FormData {
   [key: number]: {
@@ -33,6 +33,7 @@ const UserSubmission = () => {
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [activeSection, setActiveSection] = useState<string>("0");
   const [loadingOptions, setLoadingOptions] = useState<Record<string, boolean>>({});
+  const [completionPercentage, setCompletionPercentage] = useState<number>(0);
   
   const userId = 1; // Mock user ID, would come from auth context in a real app
   const navigate = useNavigate();
@@ -79,6 +80,32 @@ const UserSubmission = () => {
 
     fetchConfiguration();
   }, [toast]);
+
+  // Calculate completion percentage whenever formData changes
+  useEffect(() => {
+    if (!configuration) return;
+
+    let totalRequiredFields = 0;
+    let completedRequiredFields = 0;
+
+    configuration.sections.forEach(section => {
+      section.fields.forEach(field => {
+        if (field.required) {
+          totalRequiredFields++;
+          const value = formData[section.id]?.[field.id];
+          if (value !== undefined && value !== null && value !== "") {
+            completedRequiredFields++;
+          }
+        }
+      });
+    });
+
+    const percentage = totalRequiredFields > 0
+      ? Math.floor((completedRequiredFields / totalRequiredFields) * 100)
+      : 0;
+      
+    setCompletionPercentage(percentage);
+  }, [formData, configuration]);
 
   const loadAllDropdownOptions = async (config: RiskConfiguration) => {
     const optionsPromises: Promise<void>[] = [];
@@ -204,79 +231,6 @@ const UserSubmission = () => {
     }
   };
 
-  // Render a field based on its type
-  const renderField = (field: Field, sectionId: number) => {
-    const value = formData[sectionId]?.[field.id] || "";
-    
-    switch (field.type) {
-      case 'text':
-        return (
-          <Input
-            id={`field-${sectionId}-${field.id}`}
-            value={value}
-            onChange={(e) => handleInputChange(sectionId, field.id, e.target.value)}
-            className="mt-1"
-            disabled={submitting}
-          />
-        );
-        
-      case 'number':
-        return (
-          <Input
-            id={`field-${sectionId}-${field.id}`}
-            type="number"
-            value={value}
-            onChange={(e) => handleInputChange(sectionId, field.id, Number(e.target.value))}
-            className="mt-1"
-            disabled={submitting}
-          />
-        );
-        
-      case 'select':
-        const options = field.valueApi ? fieldOptions[field.valueApi] || [] : [];
-        const isLoading = field.valueApi ? loadingOptions[field.valueApi] : false;
-        
-        return (
-          <Select
-            value={value.toString()}
-            onValueChange={(val) => handleInputChange(sectionId, field.id, Number(val))}
-            disabled={submitting || isLoading}
-          >
-            <SelectTrigger id={`field-${sectionId}-${field.id}`} className="mt-1">
-              <SelectValue placeholder={isLoading ? "Loading options..." : "Select an option"} />
-            </SelectTrigger>
-            <SelectContent>
-              {options.map(option => (
-                <SelectItem key={option.id} value={option.id.toString()}>
-                  {option.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-        );
-        
-      case 'checkbox':
-        return (
-          <div className="flex items-center mt-2">
-            <input
-              id={`field-${sectionId}-${field.id}`}
-              type="checkbox"
-              checked={value}
-              onChange={(e) => handleInputChange(sectionId, field.id, e.target.checked)}
-              className="h-4 w-4 rounded border-gray-300"
-              disabled={submitting}
-            />
-            <label htmlFor={`field-${sectionId}-${field.id}`} className="ml-2 text-sm">
-              Yes
-            </label>
-          </div>
-        );
-        
-      default:
-        return <div>Unsupported field type</div>;
-    }
-  };
-
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -291,48 +245,63 @@ const UserSubmission = () => {
   }
 
   return (
-    <div>
+    <div className="animate-fade-in">
       <PageHeader
         title="Risk Assessment Form"
         description="Please complete all sections to receive your risk assessment"
       />
+
+      <Card className="mb-6 card-elevated">
+        <CardContent className="pt-6">
+          <div className="flex items-center gap-4">
+            <div className="flex-1">
+              <Progress value={completionPercentage} className="h-2" />
+            </div>
+            <div className="text-sm font-medium text-blue-700">
+              {completionPercentage}% Complete
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       <Tabs
         value={activeSection}
         onValueChange={setActiveSection}
         className="space-y-4"
       >
-        <TabsList className="w-full overflow-x-auto flex-nowrap">
-          {configuration?.sections.map((section, index) => (
-            <TabsTrigger key={section.id} value={index.toString()}>
-              {section.name}
-            </TabsTrigger>
-          ))}
-        </TabsList>
+        <div className="overflow-x-auto pb-2">
+          <TabsList className="h-auto p-1 inline-flex flex-nowrap min-w-full">
+            {configuration?.sections.map((section, index) => (
+              <TabsTrigger 
+                key={section.id} 
+                value={index.toString()}
+                className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+              >
+                {section.name}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         {configuration?.sections.map((section, index) => (
-          <TabsContent key={section.id} value={index.toString()}>
-            <Card>
+          <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
+            <Card className="card-elevated">
               <CardHeader>
-                <CardTitle>{section.name}</CardTitle>
+                <CardTitle className="text-blue-800">{section.name}</CardTitle>
                 <CardDescription>
                   Please provide accurate information for this section
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="space-y-6">
-                  {section.fields.map(field => (
-                    <div key={field.id}>
-                      <Label 
-                        htmlFor={`field-${section.id}-${field.id}`} 
-                        className="mb-1 block"
-                      >
-                        {field.name} {field.required && <span className="text-red-500">*</span>}
-                      </Label>
-                      {renderField(field, section.id)}
-                    </div>
-                  ))}
-                </div>
+                <SectionFieldsList
+                  sectionId={section.id}
+                  fields={section.fields}
+                  formData={formData[section.id] || {}}
+                  loadingOptions={loadingOptions}
+                  fieldOptions={fieldOptions}
+                  submitting={submitting}
+                  handleInputChange={handleInputChange}
+                />
 
                 <div className="flex justify-between mt-8">
                   <Button
@@ -342,14 +311,16 @@ const UserSubmission = () => {
                       setActiveSection(prevSection.toString());
                     }}
                     disabled={parseInt(activeSection) === 0 || submitting}
+                    className="border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                   >
-                    Previous
+                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
                   </Button>
                   
                   {parseInt(activeSection) === configuration.sections.length - 1 ? (
                     <Button 
                       onClick={handleSubmit}
                       disabled={submitting}
+                      className="bg-blue-600 hover:bg-blue-700 transition-colors"
                     >
                       {submitting ? "Submitting..." : "Submit Application"}
                     </Button>
@@ -363,8 +334,9 @@ const UserSubmission = () => {
                         setActiveSection(nextSection.toString());
                       }}
                       disabled={submitting}
+                      className="bg-blue-600 hover:bg-blue-700 transition-colors"
                     >
-                      Next
+                      Next <ChevronRight className="ml-1 h-4 w-4" />
                     </Button>
                   )}
                 </div>
