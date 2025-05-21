@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -54,12 +55,14 @@ const CompanyConfiguration = () => {
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
-          // Fetch field options for all fields with valueApi
-          const fieldsWithApi = response.value.sections.flatMap(section => 
-            section.fields.filter(field => field.valueApi)
+          // Only fetch field options for fields with valueApi that don't already have fieldValues
+          const fieldsNeedingOptions = response.value.sections.flatMap(section => 
+            section.fields.filter(field => 
+              field.valueApi && (!field.fieldValues || field.fieldValues.length === 0)
+            )
           );
           
-          fieldsWithApi.forEach(field => {
+          fieldsNeedingOptions.forEach(field => {
             if (field.valueApi) {
               fetchFieldOptions(field.valueApi);
             }
@@ -287,7 +290,7 @@ const CompanyConfiguration = () => {
   const updateFieldValueCondition2 = (
     sectionId: number, 
     fieldId: number, 
-    fieldValueId: number,  // Fixed parameter name to be clear
+    fieldValueId: number,  
     condition2Value: string
   ) => {
     if (!configuration) return;
@@ -297,7 +300,7 @@ const CompanyConfiguration = () => {
         const updatedFields = s.fields.map(f => {
           if (f.id === fieldId) {
             const updatedFieldValues = f.fieldValues.map(fv => {
-              if (fv.id === fieldValueId) {  // Use fieldValueId instead of valueId
+              if (fv.id === fieldValueId) {  
                 return { ...fv, condition2: condition2Value };
               }
               return fv;
@@ -390,7 +393,7 @@ const CompanyConfiguration = () => {
                   onChange={(e) => updateFieldValueCondition2(
                     section.id, 
                     field.id, 
-                    fieldValue.id,  // Use fieldValue.id directly
+                    fieldValue.id,
                     e.target.value
                   )}
                   className="mt-1 border-gray-200 bg-white"
@@ -434,8 +437,12 @@ const CompanyConfiguration = () => {
 
   // Render field configuration
   const renderField = (field: Field, section: Section) => {
-    const hasFieldOptions = field.valueApi && fieldOptionsMap[field.valueApi]?.length > 0;
-    const isLoading = field.valueApi && loadingFieldOptions[field.valueApi];
+    // Check if the field already has values from the API response
+    const hasExistingFieldValues = field.fieldValues && field.fieldValues.length > 0;
+    
+    // Only fetch options if needed
+    const hasFieldOptions = !hasExistingFieldValues && field.valueApi && fieldOptionsMap[field.valueApi]?.length > 0;
+    const isLoading = field.valueApi && !hasExistingFieldValues && loadingFieldOptions[field.valueApi];
 
     return (
       <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-gray-200 rounded-md overflow-hidden mb-4 shadow-sm">
@@ -448,35 +455,42 @@ const CompanyConfiguration = () => {
               <div className="flex justify-center items-center p-8">
                 <LoadingSpinner size="md" color="blue" />
               </div>
+            ) : hasExistingFieldValues ? (
+              // Use existing field values from the API response
+              <div>
+                <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
+                {field.fieldValues.map((fieldValue) => renderFieldValue(fieldValue, field, section))}
+              </div>
             ) : hasFieldOptions ? (
+              // Use options from the secondary API call
               <div>
                 <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
                 {fieldOptionsMap[field.valueApi!].map((option) => {
-                  // Find existing field value or create a new one
-                  let fieldValue = field.fieldValues.find(fv => fv.id === option.id);
+                  // Create a new field value since none exists
+                  let fieldValue = {
+                    id: option.id,
+                    value: option.label || String(option.id),
+                    condition: '=' as ConditionOperator,
+                    conditionType: 'equals',
+                    weightage: 0
+                  };
                   
-                  if (!fieldValue) {
-                    fieldValue = {
-                      id: option.id,
-                      value: option.label || String(option.id),
-                      condition: '=' as ConditionOperator,
-                      conditionType: 'equals',
-                      weightage: 0
-                    };
-                    
-                    // Add this new field value to the configuration
-                    if (configuration) {
-                      const updatedSections = [...configuration.sections];
-                      const sectionIndex = updatedSections.findIndex(s => s.id === section.id);
-                      if (sectionIndex !== -1) {
-                        const fieldIndex = updatedSections[sectionIndex].fields.findIndex(f => f.id === field.id);
-                        if (fieldIndex !== -1) {
-                          updatedSections[sectionIndex].fields[fieldIndex].fieldValues.push(fieldValue);
-                          setConfiguration({
-                            ...configuration,
-                            sections: updatedSections
-                          });
+                  // Add this new field value to the configuration
+                  if (configuration) {
+                    const updatedSections = [...configuration.sections];
+                    const sectionIndex = updatedSections.findIndex(s => s.id === section.id);
+                    if (sectionIndex !== -1) {
+                      const fieldIndex = updatedSections[sectionIndex].fields.findIndex(f => f.id === field.id);
+                      if (fieldIndex !== -1) {
+                        // Ensure fieldValues array exists
+                        if (!updatedSections[sectionIndex].fields[fieldIndex].fieldValues) {
+                          updatedSections[sectionIndex].fields[fieldIndex].fieldValues = [];
                         }
+                        updatedSections[sectionIndex].fields[fieldIndex].fieldValues.push(fieldValue);
+                        setConfiguration({
+                          ...configuration,
+                          sections: updatedSections
+                        });
                       }
                     }
                   }

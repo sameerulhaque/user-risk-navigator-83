@@ -22,12 +22,31 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  // Function to refresh user data
+  const refreshUserData = async () => {
+    try {
+      if (userService.checkAuth()) {
+        const currentUser = await userService.getCurrentUser();
+        setUser(currentUser);
+        return true;
+      }
+      return false;
+    } catch (error) {
+      console.error('Auth refresh error:', error);
+      return false;
+    }
+  };
+
   useEffect(() => {
     const initAuth = async () => {
       try {
-        if (userService.checkAuth()) {
-          const currentUser = await userService.getCurrentUser();
-          setUser(currentUser);
+        const success = await refreshUserData();
+        if (!success) {
+          // If normal auth check fails, try token refresh
+          const refreshSuccess = await userService.refreshToken();
+          if (refreshSuccess) {
+            await refreshUserData();
+          }
         }
       } catch (error) {
         console.error('Auth initialization error:', error);
@@ -37,6 +56,16 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     };
 
     initAuth();
+
+    // Set up an interval to periodically check authentication status
+    // This helps detect token changes across tabs
+    const authCheckInterval = setInterval(() => {
+      refreshUserData();
+    }, 60000); // Check every minute
+
+    return () => {
+      clearInterval(authCheckInterval);
+    };
   }, []);
 
   const login = async (email: string, password: string): Promise<void> => {

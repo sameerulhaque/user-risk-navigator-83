@@ -9,6 +9,8 @@ export interface User {
   email: string;
   phone?: string;
   token?: string;
+  refreshToken?: string; // Added refreshToken
+  tokenExpiry?: number; // Added token expiry timestamp
   role?: string;
   status?: string;
 }
@@ -57,12 +59,14 @@ class UserService extends ApiService {
   private static instance: UserService;
   private isAuthenticated: boolean = false;
   private currentUser: User | null = null;
+  private tokenRefreshTimeout: ReturnType<typeof setTimeout> | null = null;
 
   private constructor() {
     // In a real environment this would be your actual API endpoint
     // For demo purposes we'll use a mock API
     super('/api/users');
     this.initializeFromLocalStorage();
+    this.setupTokenRefresh();
   }
 
   // Singleton pattern
@@ -81,8 +85,63 @@ class UserService extends ApiService {
     }
   }
 
+  private setupTokenRefresh(): void {
+    // Clear any existing timeout
+    if (this.tokenRefreshTimeout) {
+      clearTimeout(this.tokenRefreshTimeout);
+    }
+
+    // Check if token needs refresh
+    const tokenExpiry = Number(localStorage.getItem('tokenExpiry'));
+    if (tokenExpiry) {
+      const timeUntilRefresh = Math.max(0, tokenExpiry - Date.now() - 60000); // Refresh 1 minute before expiry
+      
+      if (timeUntilRefresh < 0) {
+        // Token already expired, refresh immediately if possible
+        this.refreshToken();
+      } else {
+        // Schedule token refresh
+        this.tokenRefreshTimeout = setTimeout(() => {
+          this.refreshToken();
+        }, timeUntilRefresh);
+      }
+    }
+  }
+
+  async refreshToken(): Promise<boolean> {
+    const refreshToken = localStorage.getItem('refreshToken');
+    if (!refreshToken) {
+      return false;
+    }
+
+    try {
+      // In a real app, this would call the actual API
+      // For demo purposes, we're just simulating a refresh
+      
+      // Simulate token refresh success
+      const newToken = 'mock-jwt-token-' + Date.now();
+      const newRefreshToken = 'mock-refresh-token-' + Date.now();
+      const expiryTime = Date.now() + 3600000; // 1 hour from now
+      
+      localStorage.setItem('authToken', newToken);
+      localStorage.setItem('refreshToken', newRefreshToken);
+      localStorage.setItem('tokenExpiry', expiryTime.toString());
+      
+      // Reset the refresh timer
+      this.setupTokenRefresh();
+      return true;
+    } catch (error) {
+      console.error('Token refresh failed:', error);
+      // If refresh fails, user needs to log in again
+      this.logout();
+      return false;
+    }
+  }
+
   setUserDataLocally(user: User): void {
     if (user.token) localStorage.setItem('authToken', user.token);
+    if (user.refreshToken) localStorage.setItem('refreshToken', user.refreshToken);
+    if (user.tokenExpiry) localStorage.setItem('tokenExpiry', user.tokenExpiry.toString());
     if (user.fullName) localStorage.setItem('userName', user.fullName);
     if (user.email) localStorage.setItem('userEmail', user.email);
     if (user.id) localStorage.setItem('userId', user.id);
@@ -93,6 +152,7 @@ class UserService extends ApiService {
   getUserDataLocally(): User {
     const user: User = {
       token: localStorage.getItem('authToken') || '',
+      refreshToken: localStorage.getItem('refreshToken') || '',
       fullName: localStorage.getItem('userName') || '',
       email: localStorage.getItem('userEmail') || '',
       id: localStorage.getItem('userId') || '',
@@ -114,12 +174,17 @@ class UserService extends ApiService {
         // Simulate successful login
         const user: User = {
           ...mockUser,
-          token: 'mock-jwt-token-' + Date.now() // Simulate a JWT token
+          token: 'mock-jwt-token-' + Date.now(), // Simulate a JWT token
+          refreshToken: 'mock-refresh-token-' + Date.now(), // Simulate a refresh token
+          tokenExpiry: Date.now() + 3600000, // 1 hour from now
         };
         
         this.setUserDataLocally(user);
         this.isAuthenticated = true;
         this.currentUser = user;
+        
+        // Set up token refresh
+        this.setupTokenRefresh();
         
         return {
           isSuccess: true,
@@ -175,7 +240,9 @@ class UserService extends ApiService {
         phone: data.phone,
         role: 'User',
         status: 'Active',
-        token: 'mock-jwt-token-' + Date.now()
+        token: 'mock-jwt-token-' + Date.now(),
+        refreshToken: 'mock-refresh-token-' + Date.now(),
+        tokenExpiry: Date.now() + 3600000, // 1 hour from now
       };
       
       // Add to mock users (in a real app this would be saved in the database)
@@ -184,6 +251,9 @@ class UserService extends ApiService {
       this.setUserDataLocally(newUser);
       this.isAuthenticated = true;
       this.currentUser = newUser;
+      
+      // Set up token refresh
+      this.setupTokenRefresh();
       
       return {
         isSuccess: true,
@@ -207,11 +277,19 @@ class UserService extends ApiService {
   // Logout user
   logout(): void {
     localStorage.removeItem('authToken');
+    localStorage.removeItem('refreshToken');
+    localStorage.removeItem('tokenExpiry');
     localStorage.removeItem('userName');
     localStorage.removeItem('userEmail');
     localStorage.removeItem('userId');
     localStorage.removeItem('userPhone');
     localStorage.removeItem('isAdmin');
+    
+    if (this.tokenRefreshTimeout) {
+      clearTimeout(this.tokenRefreshTimeout);
+      this.tokenRefreshTimeout = null;
+    }
+    
     this.isAuthenticated = false;
     this.currentUser = null;
   }
@@ -219,8 +297,22 @@ class UserService extends ApiService {
   // Check authentication status
   checkAuth(): boolean {
     const token = localStorage.getItem('authToken');
-    this.isAuthenticated = !!token;
-    return this.isAuthenticated;
+    const tokenExpiry = Number(localStorage.getItem('tokenExpiry'));
+    
+    // Check if token exists and is not expired
+    if (token && tokenExpiry && tokenExpiry > Date.now()) {
+      this.isAuthenticated = true;
+      return true;
+    } else if (token && tokenExpiry && tokenExpiry <= Date.now()) {
+      // Token is expired, try to refresh
+      this.refreshToken().then(success => {
+        this.isAuthenticated = success;
+      });
+      return this.isAuthenticated;
+    }
+    
+    this.isAuthenticated = false;
+    return false;
   }
 
   // Check if user is admin
