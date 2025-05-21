@@ -82,10 +82,17 @@ const SectionFieldsList = ({
             </SelectTrigger>
             <SelectContent>
               {options.map(option => (
-                <SelectItem key={option.id} value={option.id.toString()}>
-                  {option.label}
+                // Ensure option.id is properly converted to string and is never empty
+                <SelectItem 
+                  key={option.id} 
+                  value={option.id.toString() || "undefined_option"}
+                >
+                  {option.label || "Unnamed option"}
                 </SelectItem>
               ))}
+              {options.length === 0 && !isLoading && (
+                <SelectItem value="no_options">No options available</SelectItem>
+              )}
             </SelectContent>
           </Select>
         );
