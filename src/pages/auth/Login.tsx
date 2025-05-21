@@ -1,59 +1,73 @@
 
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { LoginCredentials } from "@/services/userService";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { useForm } from "react-hook-form";
 import { z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { useAuth } from "@/contexts/AuthContext";
+import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from "@/components/ui/form";
+import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from "@/components/ui/card";
 import LoadingSpinner from "@/components/LoadingSpinner";
 
-const loginSchema = z.object({
+const formSchema = z.object({
   email: z.string().email("Please enter a valid email address"),
   password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
-type LoginFormValues = z.infer<typeof loginSchema>;
+type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
   const { login } = useAuth();
+  const { toast } = useToast();
   const navigate = useNavigate();
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
-  const form = useForm<LoginFormValues>({
-    resolver: zodResolver(loginSchema),
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
     defaultValues: {
       email: "",
       password: "",
     },
   });
 
-  const onSubmit = async (data: LoginFormValues) => {
-    setIsSubmitting(true);
-    const credentials: LoginCredentials = {
-      email: data.email,
-      password: data.password,
-    };
-
-    const success = await login(credentials);
-    if (success) {
+  const onSubmit = async (data: FormValues) => {
+    setIsLoading(true);
+    try {
+      await login(data.email, data.password);
+      toast({
+        title: "Success",
+        description: "You have successfully logged in",
+      });
       navigate("/home");
+    } catch (error) {
+      console.error("Login error:", error);
+      toast({
+        title: "Error",
+        description: "Invalid email or password",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
     }
-    setIsSubmitting(false);
   };
 
   return (
-    <div className="flex items-center justify-center min-h-screen px-4 py-12 bg-muted/20 animate-fade-in">
-      <Card className="w-full max-w-md shadow-lg border-blue-100 hover:shadow-xl transition-all duration-300">
-        <CardHeader className="space-y-1">
-          <CardTitle className="text-2xl font-semibold text-center text-blue-800">Sign In</CardTitle>
-          <CardDescription className="text-center">
-            Enter your email and password to access your account
+    <div className="flex h-screen items-center justify-center bg-gradient-to-br from-blue-50 to-white p-4">
+      <Card className="w-full max-w-md shadow-lg animate-fade-in">
+        <CardHeader className="space-y-1 text-center">
+          <CardTitle className="text-2xl font-bold text-blue-700">Welcome back</CardTitle>
+          <CardDescription>
+            Enter your credentials to access your account
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -66,12 +80,7 @@ const Login = () => {
                   <FormItem>
                     <FormLabel>Email</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="email@example.com" 
-                        type="email" 
-                        {...field} 
-                        className="bg-background focus:border-blue-300"
-                      />
+                      <Input placeholder="Enter your email" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -84,32 +93,27 @@ const Login = () => {
                   <FormItem>
                     <FormLabel>Password</FormLabel>
                     <FormControl>
-                      <Input 
-                        placeholder="••••••••" 
-                        type="password" 
-                        {...field} 
-                        className="bg-background focus:border-blue-300"
-                      />
+                      <Input type="password" placeholder="Enter your password" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
-              <Button 
-                type="submit" 
-                className="w-full bg-blue-600 hover:bg-blue-700 transition-colors" 
-                disabled={isSubmitting}
+              <Button
+                type="submit"
+                className="w-full"
+                disabled={isLoading}
               >
-                {isSubmitting ? <LoadingSpinner size="sm" /> : "Sign In"}
+                {isLoading ? <LoadingSpinner size="sm" /> : "Sign In"}
               </Button>
             </form>
           </Form>
         </CardContent>
-        <CardFooter className="flex flex-col space-y-2">
-          <div className="text-sm text-center">
-            <span className="text-muted-foreground">Don't have an account? </span>
+        <CardFooter className="flex flex-col space-y-2 text-center text-sm">
+          <div>
+            Don't have an account?{" "}
             <Link to="/register" className="text-blue-600 hover:underline">
-              Sign up
+              Register
             </Link>
           </div>
         </CardFooter>

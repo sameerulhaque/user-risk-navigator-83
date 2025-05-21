@@ -2,13 +2,12 @@
 // Condition types
 export type ConditionOperator = '>' | '<' | '=' | 'between' | 'contains' | 'isEmpty' | 'isNotEmpty';
 
-export interface Condition {
+export interface FieldValue {
   id: number;
-  operator: ConditionOperator;
-  value: any;
-  secondaryValue?: any; // For "between" operator
+  value: string;
+  condition: ConditionOperator;
+  conditionType: string;
   weightage: number;
-  logicalOperator?: 'AND' | 'OR';
 }
 
 // Field definition
@@ -17,7 +16,7 @@ export interface Field {
   name: string;
   type: 'text' | 'number' | 'select' | 'date' | 'checkbox';
   valueApi?: string;
-  conditions: Condition[];
+  fieldValues: FieldValue[];
   required?: boolean;
   defaultValue?: any;
 }

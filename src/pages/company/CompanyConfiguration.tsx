@@ -8,16 +8,19 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { getRiskConfiguration, saveRiskConfiguration } from "@/services/api";
-import { RiskConfiguration, Section, Field, Condition } from "@/types/risk";
+import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions } from "@/services/api";
+import { RiskConfiguration, Section, Field, FieldValue, ConditionOperator } from "@/types/risk";
 
 const CompanyConfiguration = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<string>("0");
   const [isSaving, setIsSaving] = useState<boolean>(false);
+  const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, any[]>>({});
+  const [loadingFieldOptions, setLoadingFieldOptions] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
 
   useEffect(() => {
@@ -27,6 +30,17 @@ const CompanyConfiguration = () => {
         const response = await getRiskConfiguration();
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
+          
+          // Fetch field options for all fields with valueApi
+          const fieldsWithApi = response.value.sections.flatMap(section => 
+            section.fields.filter(field => field.valueApi)
+          );
+          
+          fieldsWithApi.forEach(field => {
+            if (field.valueApi) {
+              fetchFieldOptions(field.valueApi);
+            }
+          });
         } else {
           toast({
             title: "Error",
@@ -48,6 +62,26 @@ const CompanyConfiguration = () => {
 
     fetchConfiguration();
   }, [toast]);
+
+  const fetchFieldOptions = async (apiEndpoint: string) => {
+    setLoadingFieldOptions(prev => ({ ...prev, [apiEndpoint]: true }));
+    try {
+      const response = await getFieldOptions(apiEndpoint);
+      if (response.isSuccess && response.value) {
+        setFieldOptionsMap(prev => ({ ...prev, [apiEndpoint]: response.value }));
+      } else {
+        toast({
+          title: "Error",
+          description: `Failed to load options for ${apiEndpoint}`,
+          variant: "destructive"
+        });
+      }
+    } catch (error) {
+      console.error(`Error fetching options for ${apiEndpoint}:`, error);
+    } finally {
+      setLoadingFieldOptions(prev => ({ ...prev, [apiEndpoint]: false }));
+    }
+  };
 
   const handleSaveConfiguration = async () => {
     if (!configuration) return;
@@ -95,10 +129,10 @@ const CompanyConfiguration = () => {
     });
   };
 
-  const updateConditionWeightage = (
+  const updateFieldValueWeightage = (
     sectionId: number, 
     fieldId: number, 
-    conditionId: number, 
+    valueId: number, 
     weightage: number
   ) => {
     if (!configuration) return;
@@ -107,14 +141,14 @@ const CompanyConfiguration = () => {
       if (section.id === sectionId) {
         const updatedFields = section.fields.map(field => {
           if (field.id === fieldId) {
-            const updatedConditions = field.conditions.map(condition => {
-              if (condition.id === conditionId) {
-                return { ...condition, weightage };
+            const updatedFieldValues = field.fieldValues.map(fieldValue => {
+              if (fieldValue.id === valueId) {
+                return { ...fieldValue, weightage };
               }
-              return condition;
+              return fieldValue;
             });
             
-            return { ...field, conditions: updatedConditions };
+            return { ...field, fieldValues: updatedFieldValues };
           }
           return field;
         });
@@ -130,65 +164,108 @@ const CompanyConfiguration = () => {
     });
   };
 
-  // Render condition based on its type
-  const renderCondition = (
-    condition: Condition, 
-    field: Field, 
-    section: Section
+  const updateFieldValueCondition = (
+    sectionId: number, 
+    fieldId: number, 
+    valueId: number, 
+    condition: ConditionOperator
   ) => {
-    const getOperatorLabel = (op: string) => {
-      switch (op) {
-        case '>': return 'Greater than';
-        case '<': return 'Less than';
-        case '=': return 'Equals';
-        case 'between': return 'Between';
-        case 'contains': return 'Contains';
-        case 'isEmpty': return 'Is Empty';
-        case 'isNotEmpty': return 'Is Not Empty';
-        default: return op;
-      }
-    };
-
-    return (
-      <div key={condition.id} className="border rounded-md p-4 mb-4">
-        <div className="flex flex-col gap-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div>
-              <Label>Operator</Label>
-              <div className="font-medium mt-1">{getOperatorLabel(condition.operator)}</div>
-            </div>
+    if (!configuration) return;
+    
+    const updatedSections = configuration.sections.map(section => {
+      if (section.id === sectionId) {
+        const updatedFields = section.fields.map(field => {
+          if (field.id === fieldId) {
+            const updatedFieldValues = field.fieldValues.map(fieldValue => {
+              if (fieldValue.id === valueId) {
+                return { ...fieldValue, condition };
+              }
+              return fieldValue;
+            });
             
-            <div>
-              <Label>Value</Label>
-              <div className="font-medium mt-1">
-                {condition.operator === 'between' 
-                  ? `${condition.value} to ${condition.secondaryValue}`
-                  : condition.value}
-              </div>
-            </div>
+            return { ...field, fieldValues: updatedFieldValues };
+          }
+          return field;
+        });
+        
+        return { ...section, fields: updatedFields };
+      }
+      return section;
+    });
+
+    setConfiguration({
+      ...configuration,
+      sections: updatedSections,
+    });
+  };
+
+  // Render field value configuration
+  const renderFieldValue = (fieldValue: FieldValue, field: Field, section: Section) => {
+    return (
+      <div key={fieldValue.id} className="border border-blue-100 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <Label className="text-blue-600">Field Value</Label>
+            <div className="font-medium mt-1 bg-blue-50 p-2 rounded">{fieldValue.value}</div>
           </div>
           
           <div>
-            <Label 
-              htmlFor={`weightage-${section.id}-${field.id}-${condition.id}`}
-              className="mb-1 block"
+            <Label htmlFor={`condition-${section.id}-${field.id}-${fieldValue.id}`}>Condition</Label>
+            <Select
+              value={fieldValue.condition}
+              onValueChange={(value) => updateFieldValueCondition(
+                section.id, 
+                field.id, 
+                fieldValue.id, 
+                value as ConditionOperator
+              )}
             >
-              Risk Weightage: {condition.weightage}%
-            </Label>
-            <Slider
-              id={`weightage-${section.id}-${field.id}-${condition.id}`}
-              value={[condition.weightage]}
-              min={0}
-              max={100}
-              step={1}
-              className="my-2"
-              onValueChange={([value]) => updateConditionWeightage(section.id, field.id, condition.id, value)}
-            />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
+              <SelectTrigger 
+                id={`condition-${section.id}-${field.id}-${fieldValue.id}`}
+                className="mt-1"
+              >
+                <SelectValue placeholder="Select condition" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectItem value="=">Equals</SelectItem>
+                  <SelectItem value=">">Greater Than</SelectItem>
+                  <SelectItem value="<">Less Than</SelectItem>
+                  <SelectItem value="between">Between</SelectItem>
+                  <SelectItem value="contains">Contains</SelectItem>
+                  <SelectItem value="isEmpty">Is Empty</SelectItem>
+                  <SelectItem value="isNotEmpty">Is Not Empty</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+          
+        <div>
+          <Label 
+            htmlFor={`weightage-${section.id}-${field.id}-${fieldValue.id}`}
+            className="mb-1 block"
+          >
+            Risk Weightage: {fieldValue.weightage}%
+          </Label>
+          <Slider
+            id={`weightage-${section.id}-${field.id}-${fieldValue.id}`}
+            value={[fieldValue.weightage]}
+            min={0}
+            max={100}
+            step={1}
+            className="my-2"
+            onValueChange={([value]) => updateFieldValueWeightage(
+              section.id, 
+              field.id, 
+              fieldValue.id, 
+              value
+            )}
+          />
+          <div className="flex justify-between text-xs text-muted-foreground">
+            <span>0%</span>
+            <span>50%</span>
+            <span>100%</span>
           </div>
         </div>
       </div>
@@ -197,37 +274,77 @@ const CompanyConfiguration = () => {
 
   // Render field configuration
   const renderField = (field: Field, section: Section) => {
-    return (
-      <div key={field.id} className="border rounded-md p-4 mb-6">
-        <h4 className="font-medium text-lg mb-2">{field.name}</h4>
-        <div className="flex items-center gap-2 text-sm text-muted-foreground mb-4">
-          <div className="bg-primary/10 px-2 py-1 rounded">
-            {field.type.toUpperCase()}
-          </div>
-          {field.required && (
-            <div className="bg-red-100 text-red-700 px-2 py-1 rounded">
-              Required
-            </div>
-          )}
-          {field.valueApi && (
-            <div className="bg-blue-100 text-blue-700 px-2 py-1 rounded">
-              Dynamic Options
-            </div>
-          )}
-        </div>
+    const hasFieldOptions = field.valueApi && fieldOptionsMap[field.valueApi]?.length > 0;
+    const isLoading = field.valueApi && loadingFieldOptions[field.valueApi];
 
-        <div className="mb-4">
-          <h5 className="font-medium mb-2">Risk Conditions</h5>
-          {field.conditions.map(condition => 
-            renderCondition(condition, field, section)
-          )}
-        </div>
-      </div>
+    return (
+      <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-blue-100 rounded-md overflow-hidden mb-4">
+        <AccordionTrigger className="px-4 py-3 bg-blue-50 hover:bg-blue-100">
+          <span className="font-medium text-blue-700">{field.name}</span>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 py-3">
+          <div className="mb-4">
+            {isLoading ? (
+              <div className="flex justify-center items-center p-8">
+                <LoadingSpinner size="md" />
+              </div>
+            ) : hasFieldOptions ? (
+              <div>
+                <h5 className="font-medium text-blue-600 mb-4">Field Values Configuration</h5>
+                {fieldOptionsMap[field.valueApi!].map((option) => {
+                  // Find existing field value or create a new one
+                  let fieldValue = field.fieldValues.find(fv => fv.id === option.id);
+                  
+                  if (!fieldValue) {
+                    fieldValue = {
+                      id: option.id,
+                      value: option.label,
+                      condition: '=' as ConditionOperator,
+                      conditionType: 'Equals',
+                      weightage: 0
+                    };
+                    
+                    // Add this new field value to the configuration
+                    if (configuration) {
+                      const updatedSections = [...configuration.sections];
+                      const sectionIndex = updatedSections.findIndex(s => s.id === section.id);
+                      if (sectionIndex !== -1) {
+                        const fieldIndex = updatedSections[sectionIndex].fields.findIndex(f => f.id === field.id);
+                        if (fieldIndex !== -1) {
+                          updatedSections[sectionIndex].fields[fieldIndex].fieldValues.push(fieldValue);
+                          setConfiguration({
+                            ...configuration,
+                            sections: updatedSections
+                          });
+                        }
+                      }
+                    }
+                  }
+                  
+                  return renderFieldValue(fieldValue, field, section);
+                })}
+              </div>
+            ) : (
+              <div className="text-center text-gray-500 p-4 border border-dashed rounded-md">
+                {field.valueApi ? (
+                  <p>No field values available from API endpoint</p>
+                ) : (
+                  <p>This field does not have an API endpoint configured</p>
+                )}
+              </div>
+            )}
+          </div>
+        </AccordionContent>
+      </AccordionItem>
     );
   };
 
   if (loading) {
-    return <LoadingSpinner />;
+    return (
+      <div className="flex justify-center items-center h-64">
+        <LoadingSpinner size="lg" />
+      </div>
+    );
   }
 
   if (!configuration) {
@@ -287,7 +404,7 @@ const CompanyConfiguration = () => {
       >
         <TabsList className="w-full overflow-x-auto flex-nowrap">
           {configuration.sections.map((section, index) => (
-            <TabsTrigger key={section.id} value={index.toString()}>
+            <TabsTrigger key={section.id} value={index.toString()} className="whitespace-nowrap">
               {section.name}
             </TabsTrigger>
           ))}
@@ -296,13 +413,13 @@ const CompanyConfiguration = () => {
         {configuration.sections.map((section, index) => (
           <TabsContent key={section.id} value={index.toString()}>
             <Card>
-              <CardHeader>
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
                 <CardTitle>{section.name}</CardTitle>
                 <CardDescription>
                   Section Weightage: {section.weightage}%
                 </CardDescription>
               </CardHeader>
-              <CardContent>
+              <CardContent className="pt-6">
                 <div className="mb-8">
                   <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block">
                     Section Weightage
@@ -323,10 +440,10 @@ const CompanyConfiguration = () => {
                   </div>
                 </div>
 
-                <h3 className="text-lg font-medium mb-4">Fields</h3>
-                <div className="space-y-4">
+                <h3 className="text-lg font-medium mb-4 text-blue-700">Fields</h3>
+                <Accordion type="multiple" className="space-y-2">
                   {section.fields.map(field => renderField(field, section))}
-                </div>
+                </Accordion>
               </CardContent>
             </Card>
           </TabsContent>
@@ -337,6 +454,7 @@ const CompanyConfiguration = () => {
         <Button
           onClick={handleSaveConfiguration}
           disabled={isSaving}
+          className="bg-blue-600 hover:bg-blue-700"
         >
           {isSaving ? "Saving..." : "Save Configuration"}
         </Button>
