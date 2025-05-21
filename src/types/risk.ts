@@ -5,9 +5,10 @@ export type ConditionOperator = '>' | '<' | '=' | 'between' | 'contains' | 'isEm
 export interface FieldValue {
   id: number;
   value: string;
-  condition: ConditionOperator;
+  condition: string;  // Changed from ConditionOperator to string to allow free-form input
   conditionType: string;
   weightage: number;
+  condition2?: string;  // Optional second condition for "between" type
 }
 
 // Field definition

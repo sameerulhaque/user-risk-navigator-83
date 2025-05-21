@@ -13,6 +13,7 @@ import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions } from "@/services/api";
 import { RiskConfiguration, Section, Field, FieldValue, ConditionOperator } from "@/types/risk";
+import axios from "axios";
 
 const CompanyConfiguration = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
@@ -88,7 +89,23 @@ const CompanyConfiguration = () => {
     
     setIsSaving(true);
     try {
+      // First try to use the API service
       const response = await saveRiskConfiguration(configuration);
+      
+      // Also make a direct axios call
+      try {
+        await axios.post('/api/risk-configuration', configuration, {
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${localStorage.getItem('authToken')}`,
+            'x-tenant-id': 'tenant1'
+          }
+        });
+      } catch (axiosError) {
+        console.error('Axios direct call error:', axiosError);
+        // We don't throw here since we already got a response from the API service
+      }
+
       if (response.isSuccess) {
         toast({
           title: "Success",
@@ -168,7 +185,7 @@ const CompanyConfiguration = () => {
     sectionId: number, 
     fieldId: number, 
     valueId: number, 
-    condition: ConditionOperator
+    condition: string
   ) => {
     if (!configuration) return;
     
@@ -178,7 +195,42 @@ const CompanyConfiguration = () => {
           if (field.id === fieldId) {
             const updatedFieldValues = field.fieldValues.map(fieldValue => {
               if (fieldValue.id === valueId) {
-                return { ...fieldValue, condition };
+                return { ...fieldValue, condition: condition as ConditionOperator };
+              }
+              return fieldValue;
+            });
+            
+            return { ...field, fieldValues: updatedFieldValues };
+          }
+          return field;
+        });
+        
+        return { ...section, fields: updatedFields };
+      }
+      return section;
+    });
+
+    setConfiguration({
+      ...configuration,
+      sections: updatedSections,
+    });
+  };
+
+  const updateFieldValueConditionType = (
+    sectionId: number, 
+    fieldId: number, 
+    valueId: number, 
+    conditionType: string
+  ) => {
+    if (!configuration) return;
+    
+    const updatedSections = configuration.sections.map(section => {
+      if (section.id === sectionId) {
+        const updatedFields = section.fields.map(field => {
+          if (field.id === fieldId) {
+            const updatedFieldValues = field.fieldValues.map(fieldValue => {
+              if (fieldValue.id === valueId) {
+                return { ...fieldValue, conditionType };
               }
               return fieldValue;
             });
@@ -201,30 +253,32 @@ const CompanyConfiguration = () => {
 
   // Render field value configuration
   const renderFieldValue = (fieldValue: FieldValue, field: Field, section: Section) => {
+    const isBetweenCondition = fieldValue.conditionType === 'between';
+
     return (
-      <div key={fieldValue.id} className="border border-blue-100 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow">
+      <div key={fieldValue.id} className="border border-gray-200 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
-            <Label className="text-blue-600">Field Value</Label>
-            <div className="font-medium mt-1 bg-blue-50 p-2 rounded">{fieldValue.value}</div>
+            <Label className="text-gray-700">Field Value</Label>
+            <div className="font-medium mt-1 bg-gray-50 p-2 rounded">{fieldValue.value}</div>
           </div>
           
           <div>
-            <Label htmlFor={`condition-${section.id}-${field.id}-${fieldValue.id}`}>Condition</Label>
+            <Label htmlFor={`condition-type-${section.id}-${field.id}-${fieldValue.id}`}>Condition Type</Label>
             <Select
-              value={fieldValue.condition}
-              onValueChange={(value) => updateFieldValueCondition(
+              value={fieldValue.conditionType}
+              onValueChange={(value) => updateFieldValueConditionType(
                 section.id, 
                 field.id, 
                 fieldValue.id, 
-                value as ConditionOperator
+                value
               )}
             >
               <SelectTrigger 
-                id={`condition-${section.id}-${field.id}-${fieldValue.id}`}
-                className="mt-1 border-blue-200"
+                id={`condition-type-${section.id}-${field.id}-${fieldValue.id}`}
+                className="mt-1 border-gray-200"
               >
-                <SelectValue placeholder="Select condition" />
+                <SelectValue placeholder="Select condition type" />
               </SelectTrigger>
               <SelectContent>
                 <SelectGroup>
@@ -240,11 +294,39 @@ const CompanyConfiguration = () => {
             </Select>
           </div>
         </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+          <div>
+            <Label htmlFor={`condition-${section.id}-${field.id}-${fieldValue.id}`}>Condition Value 1</Label>
+            <Input
+              id={`condition-${section.id}-${field.id}-${fieldValue.id}`}
+              value={fieldValue.condition}
+              onChange={(e) => updateFieldValueCondition(
+                section.id, 
+                field.id, 
+                fieldValue.id, 
+                e.target.value
+              )}
+              className="mt-1 border-gray-200"
+            />
+          </div>
+          
+          {isBetweenCondition && (
+            <div>
+              <Label htmlFor={`condition2-${section.id}-${field.id}-${fieldValue.id}`}>Condition Value 2</Label>
+              <Input
+                id={`condition2-${section.id}-${field.id}-${fieldValue.id}`}
+                placeholder="Enter second value"
+                className="mt-1 border-gray-200"
+              />
+            </div>
+          )}
+        </div>
           
         <div>
           <Label 
             htmlFor={`weightage-${section.id}-${field.id}-${fieldValue.id}`}
-            className="mb-1 block text-blue-700"
+            className="mb-1 block text-gray-700"
           >
             Risk Weightage: {fieldValue.weightage}%
           </Label>
@@ -278,19 +360,19 @@ const CompanyConfiguration = () => {
     const isLoading = field.valueApi && loadingFieldOptions[field.valueApi];
 
     return (
-      <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-blue-100 rounded-md overflow-hidden mb-4">
-        <AccordionTrigger className="px-4 py-3 bg-gradient-to-r from-blue-50 to-white hover:bg-blue-100">
-          <span className="font-medium text-blue-700">{field.name}</span>
+      <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-gray-200 rounded-md overflow-hidden mb-4">
+        <AccordionTrigger className="px-4 py-3 bg-gradient-to-r from-gray-50 to-white hover:bg-gray-100">
+          <span className="font-medium text-gray-700">{field.name}</span>
         </AccordionTrigger>
         <AccordionContent className="px-4 py-3">
           <div className="mb-4">
             {isLoading ? (
               <div className="flex justify-center items-center p-8">
-                <LoadingSpinner size="md" />
+                <LoadingSpinner size="md" color="gray" />
               </div>
             ) : hasFieldOptions ? (
               <div>
-                <h5 className="font-medium text-blue-600 mb-4">Field Values Configuration</h5>
+                <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
                 {fieldOptionsMap[field.valueApi!].map((option) => {
                   // Find existing field value or create a new one
                   let fieldValue = field.fieldValues.find(fv => fv.id === option.id);
@@ -342,7 +424,7 @@ const CompanyConfiguration = () => {
   if (loading) {
     return (
       <div className="flex justify-center items-center h-64">
-        <LoadingSpinner size="lg" />
+        <LoadingSpinner size="lg" color="gray" />
       </div>
     );
   }
@@ -350,9 +432,9 @@ const CompanyConfiguration = () => {
   if (!configuration) {
     return (
       <div className="text-center py-8">
-        <h3 className="text-xl font-medium mb-2 text-blue-700">No Configuration Found</h3>
+        <h3 className="text-xl font-medium mb-2 text-gray-700">No Configuration Found</h3>
         <p className="text-muted-foreground">Please create a new risk configuration.</p>
-        <Button className="mt-4 bg-blue-600 hover:bg-blue-700">Create New Configuration</Button>
+        <Button className="mt-4 bg-gray-600 hover:bg-gray-700">Create New Configuration</Button>
       </div>
     );
   }
@@ -366,31 +448,31 @@ const CompanyConfiguration = () => {
         onAction={handleSaveConfiguration}
       />
 
-      <Card className="mb-6 shadow-md border-blue-100">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
-          <CardTitle className="text-blue-700">Configuration Details</CardTitle>
-          <CardDescription className="text-blue-600">
+      <Card className="mb-6 shadow-md border-gray-200">
+        <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
+          <CardTitle className="text-gray-700">Configuration Details</CardTitle>
+          <CardDescription className="text-gray-600">
             Version {configuration.version} • Last updated {new Date().toLocaleDateString()}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <Label htmlFor="config-name" className="text-blue-700">Configuration Name</Label>
+              <Label htmlFor="config-name" className="text-gray-700">Configuration Name</Label>
               <Input
                 id="config-name"
                 value={configuration.name}
                 onChange={(e) => setConfiguration({ ...configuration, name: e.target.value })}
-                className="mt-1 border-blue-200 focus:border-blue-400"
+                className="mt-1 border-gray-200 focus:border-gray-400"
               />
             </div>
             <div>
-              <Label htmlFor="config-version" className="text-blue-700">Version</Label>
+              <Label htmlFor="config-version" className="text-gray-700">Version</Label>
               <Input
                 id="config-version"
                 value={configuration.version}
                 onChange={(e) => setConfiguration({ ...configuration, version: e.target.value })}
-                className="mt-1 border-blue-200 focus:border-blue-400"
+                className="mt-1 border-gray-200 focus:border-gray-400"
               />
             </div>
           </div>
@@ -404,12 +486,12 @@ const CompanyConfiguration = () => {
           className="space-y-4"
         >
           <div className="overflow-x-auto pb-2">
-            <TabsList className="inline-flex w-full overflow-x-auto flex-nowrap bg-blue-50 p-1">
+            <TabsList className="inline-flex w-full overflow-x-auto flex-nowrap bg-gray-50 p-1">
               {configuration.sections.map((section, index) => (
                 <TabsTrigger 
                   key={section.id} 
                   value={index.toString()} 
-                  className="whitespace-nowrap py-2 px-4 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  className="whitespace-nowrap py-2 px-4 data-[state=active]:bg-gray-600 data-[state=active]:text-white"
                 >
                   {section.name}
                 </TabsTrigger>
@@ -419,16 +501,16 @@ const CompanyConfiguration = () => {
 
           {configuration.sections.map((section, index) => (
             <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
-              <Card className="border-blue-100 shadow-md">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
-                  <CardTitle className="text-blue-700">{section.name}</CardTitle>
-                  <CardDescription className="text-blue-600">
+              <Card className="border-gray-200 shadow-md">
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-white">
+                  <CardTitle className="text-gray-700">{section.name}</CardTitle>
+                  <CardDescription className="text-gray-600">
                     Section Weightage: {section.weightage}%
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
                   <div className="mb-8 bg-white p-4 rounded-lg shadow-sm">
-                    <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block text-blue-700">
+                    <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block text-gray-700">
                       Section Weightage
                     </Label>
                     <Slider
@@ -447,7 +529,7 @@ const CompanyConfiguration = () => {
                     </div>
                   </div>
 
-                  <h3 className="text-lg font-medium mb-4 text-blue-700 border-b border-blue-100 pb-2">Fields</h3>
+                  <h3 className="text-lg font-medium mb-4 text-gray-700 border-b border-gray-200 pb-2">Fields</h3>
                   <Accordion type="multiple" className="space-y-2">
                     {section.fields.map(field => renderField(field, section))}
                   </Accordion>
@@ -462,11 +544,11 @@ const CompanyConfiguration = () => {
         <Button
           onClick={handleSaveConfiguration}
           disabled={isSaving}
-          className="bg-blue-600 hover:bg-blue-700 shadow-md transition-all"
+          className="bg-gray-600 hover:bg-gray-700 shadow-md transition-all"
         >
           {isSaving ? (
             <div className="flex items-center gap-2">
-              <LoadingSpinner size="sm" /> Saving...
+              <LoadingSpinner size="sm" color="white" /> Saving...
             </div>
           ) : "Save Configuration"}
         </Button>
