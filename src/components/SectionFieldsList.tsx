@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Field } from "@/types/risk";
 import { Label } from "@/components/ui/label";
@@ -81,17 +82,24 @@ const SectionFieldsList = ({
               <SelectValue placeholder={isLoading ? "Loading options..." : "Select an option"} />
             </SelectTrigger>
             <SelectContent>
-              {options.map(option => (
-                // Ensure option.id is properly converted to string and is never empty
-                <SelectItem 
-                  key={option.id} 
-                  value={option.id.toString() || "undefined_option"}
-                >
-                  {option.label || "Unnamed option"}
-                </SelectItem>
-              ))}
+              {options.map(option => {
+                // Make sure option.id exists and is never an empty string when converted
+                const optionId = option.id;
+                const optionValue = optionId !== undefined && optionId !== null
+                  ? optionId.toString() 
+                  : `undefined_option_${Math.random().toString(36).substring(2, 9)}`;
+                  
+                return (
+                  <SelectItem 
+                    key={optionId || Math.random().toString(36).substring(2, 9)} 
+                    value={optionValue === "" ? "empty_value" : optionValue}
+                  >
+                    {option.label || "Unnamed option"}
+                  </SelectItem>
+                );
+              })}
               {options.length === 0 && !isLoading && (
-                <SelectItem value="no_options">No options available</SelectItem>
+                <SelectItem value="no_options_available">No options available</SelectItem>
               )}
             </SelectContent>
           </Select>
