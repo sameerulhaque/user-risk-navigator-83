@@ -134,7 +134,7 @@ export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 't
 export const getUserProfiles = async (
   page: number = 1,
   pageSize: number = 10,
-  searchQuery?: { status?: string; scoreRange?: string },
+  searchQuery?: { status?: 'Pending' | 'Approved' | 'Rejected'; scoreRange?: string },
   tenantId: string = 'tenant1'
 ): Promise<ApiResponse<PaginatedResponse<UserProfile>>> => {
   try {
@@ -145,7 +145,7 @@ export const getUserProfiles = async (
     // return response.data;
     
     // Mock response with filtering
-    let filteredUsers = [...mockUsers];
+    let filteredUsers = [...mockUsers] as UserProfile[];
     
     if (searchQuery?.status) {
       filteredUsers = filteredUsers.filter(user => user.status === searchQuery.status);
@@ -170,7 +170,7 @@ export const getUserProfiles = async (
     const end = start + pageSize;
     const paginatedUsers = filteredUsers.slice(start, end);
     
-    return paginatedSuccessResponse(paginatedUsers, page, pageSize, filteredUsers.length);
+    return paginatedSuccessResponse<UserProfile>(paginatedUsers, page, pageSize, filteredUsers.length);
   } catch (error) {
     console.error('Failed to fetch user profiles:', error);
     return {
@@ -189,10 +189,12 @@ export const getUserRiskScore = async (userId: number, tenantId: string = 'tenan
     // const response = await api.get(`/users/${userId}/risk-score`, { headers: getDefaultHeaders(tenantId) });
     // return response.data;
     
-    // Mock response
+    // Mock response with the correct status type
     return successResponse({
       ...mockRiskScore,
       userId,
+      // Ensure status is one of the allowed values
+      status: mockRiskScore.status as 'Pending' | 'Approved' | 'Rejected'
     });
   } catch (error) {
     console.error(`Failed to fetch risk score for user ${userId}:`, error);
@@ -212,12 +214,14 @@ export const submitUserData = async (submission: UserSubmission, tenantId: strin
     // const response = await api.post('/users/submit', submission, { headers: getDefaultHeaders(tenantId) });
     // return response.data;
     
-    // Mock response
+    // Mock response with the correct status type
     return successResponse({
       ...mockRiskScore,
       userId: submission.userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
+      // Ensure status is one of the allowed values
+      status: mockRiskScore.status as 'Pending' | 'Approved' | 'Rejected'
     });
   } catch (error) {
     console.error('Failed to submit user data:', error);
