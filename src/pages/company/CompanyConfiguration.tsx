@@ -14,7 +14,7 @@ import { AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions } from "@/services/api";
-import { RiskConfiguration, RiskCompanySection, RiskCompanyField, RiskFieldValueMapping, RiskField } from "@/types/risk";
+import { RiskConfiguration, RiskCompanySection, RiskCompanyField, RiskFieldValueMapping, RiskCompanyFieldCondition } from "@/types/risk";
 import axios from "axios";
 
 // Helper function to check if condition type requires inputs
@@ -26,16 +26,6 @@ const isCustomConditionType = (type: string): boolean => {
 const needsTwoConditionInputs = (type: string): boolean => {
   return type === "between";
 };
-
-// Legacy compatibility interface for field values - will be refactored later
-interface FieldValue {
-  id: number;
-  value: string;
-  condition: string;  
-  conditionType: string;
-  weightage: number;
-  condition2?: string;  
-}
 
 const CompanyConfiguration = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
@@ -232,7 +222,7 @@ const CompanyConfiguration = () => {
     sectionId: number, 
     fieldId: number, 
     valueId: number, 
-    condition: string
+    conditionValue: string
   ) => {
     if (!configuration || !configuration.companySections) return;
     
@@ -242,7 +232,7 @@ const CompanyConfiguration = () => {
           if (field.id === fieldId) {
             const updatedConditions = field.conditions?.map(condition => {
               if (condition.id === valueId) {
-                return { ...condition, operator: condition };
+                return { ...condition, value: conditionValue };
               }
               return condition;
             });
@@ -306,7 +296,6 @@ const CompanyConfiguration = () => {
     });
   };
 
-  // Fixed function - use condition.id instead of valueId
   const updateFieldValueCondition2 = (
     sectionId: number, 
     fieldId: number, 
@@ -343,7 +332,7 @@ const CompanyConfiguration = () => {
   };
 
   // Render field value configuration (condition)
-  const renderFieldValue = (condition: any, field: RiskCompanyField, section: RiskCompanySection) => {
+  const renderFieldValue = (condition: RiskCompanyFieldCondition, field: RiskCompanyField, section: RiskCompanySection) => {
     // Determine condition type from operator for display
     let conditionType = "equals";
     if (condition.operator === ">") conditionType = "greaterThan";
@@ -498,7 +487,7 @@ const CompanyConfiguration = () => {
                 <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
                 {field.field.valueMappings?.map((mapping) => {
                   // Create a new condition based on the value mapping
-                  const newCondition = {
+                  const newCondition: RiskCompanyFieldCondition = {
                     id: mapping.id,
                     companyField: field,
                     fieldValueMapping: mapping,
@@ -539,7 +528,7 @@ const CompanyConfiguration = () => {
                 <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
                 {fieldOptionsMap[field.field.endpointURL!].map((option) => {
                   // Create a new condition from API options
-                  const newCondition = {
+                  const newCondition: RiskCompanyFieldCondition = {
                     id: option.id,
                     companyField: field,
                     fieldValueMapping: {
@@ -547,7 +536,7 @@ const CompanyConfiguration = () => {
                       text: option.label || String(option.id),
                       value: option.id,
                       field: field.field
-                    } as RiskFieldValueMapping,
+                    },
                     operator: "=",
                     riskScore: 0
                   };
