@@ -36,6 +36,7 @@ interface DropdownOption {
 
 const UserSubmission = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
+  const [companySections, setCompanySections] = useState<RiskCompanySection[]>([]);
   const [formData, setFormData] = useState<FormData>({});
   const [fieldOptions, setFieldOptions] = useState<Record<string, DropdownOption[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
@@ -379,7 +380,7 @@ const UserSubmission = () => {
                   value={index.toString()}
                   className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                 >
-                  {section.section.sectionName}
+                  {section.section?.sectionName}
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -389,7 +390,7 @@ const UserSubmission = () => {
             <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
               <Card className="card-elevated">
                 <CardHeader>
-                  <CardTitle className="text-blue-800">{section.section.sectionName}</CardTitle>
+                  <CardTitle className="text-blue-800">{section.section?.sectionName}</CardTitle>
                   <CardDescription>
                     Please provide accurate information for this section
                   </CardDescription>

@@ -5,16 +5,9 @@ export class RiskSection {
   sectionName!: string;
 }
 
-export class RiskConfiguration {
-  id!: number;
-  name!: string;
-  version!: string;
-  companySections?: RiskCompanySection[];
-}
-
 export class RiskField {
   id!: number;
-  section!: RiskSection;
+  sectionId!: number;
   endpointURL?: string;
   label?: string;
   fieldType?: string;
@@ -28,41 +21,48 @@ export class RiskFieldValueMapping {
   id!: number;
   text!: string;
   value!: number;
-  field!: RiskField;
+  fieldId!: number;
+}
+
+export class RiskConfiguration {
+  id!: number;
+  name!: string;
+  version!: string;
+  companyId!: number; // Added company ID property
+}
+
+export class RiskCompanySection {
+  id!: number;
+  companyId!: number;
+  sectionId!: number;
+  isActive!: boolean;
+  weightage!: number;
+  fields?: RiskCompanyField[];
+}
+
+export class RiskCompanyField {
+  id!: number;
+  companySectionId!: number;
+  fieldId!: number;
+  isActive!: boolean;
+  maxScore?: number;
+  conditions?: RiskCompanyFieldCondition[];
 }
 
 export class RiskCompanyFieldCondition {
   id!: number;
-  companyField!: RiskCompanyField;
-  fieldValueMapping!: RiskFieldValueMapping;
+  companyFieldId!: number;
+  fieldValueMappingId!: number;
   operator?: string;
   value?: string;
   valueTo?: string;
   riskScore!: number;
 }
 
-export class RiskCompanyField {
-  id!: number;
-  companySection!: RiskCompanySection;
-  field!: RiskField;
-  isActive!: boolean;
-  maxScore?: number;
-  conditions?: RiskCompanyFieldCondition[];
-}
-
-export class RiskCompanySection {
-  id!: number;
-  company!: RiskConfiguration;
-  section!: RiskSection;
-  isActive!: boolean;
-  weightage!: number;
-  fields?: RiskCompanyField[];
-}
-
 export class RiskUserAssessment {
   id!: number;
   userId!: number;
-  company!: RiskConfiguration;
+  companyId!: number;
   totalScore!: number;
   status!: string;
   sectionScores?: RiskUserAssessmentSectionScore[];
@@ -70,8 +70,8 @@ export class RiskUserAssessment {
 
 export class RiskUserAssessmentSectionScore {
   id!: number;
-  assessment!: RiskUserAssessment;
-  companySection!: RiskCompanySection;
+  assessmentId!: number;
+  companySectionId!: number;
   score!: number;
   maxPossible!: number;
 }

@@ -3,8 +3,210 @@ import {
   RiskScore, 
   UserProfile,
   RiskConfiguration_Legacy,
-  Section
+  Section,
+  RiskSection,
+  RiskField,
+  RiskFieldValueMapping,
+  RiskCompanySection,
+  RiskCompanyField,
+  RiskCompanyFieldCondition
 } from '@/types/risk';
+
+// Mock sections
+export const mockSections: RiskSection[] = [
+  { id: 1, sectionName: "Personal Information" },
+  { id: 2, sectionName: "Financial History" },
+  { id: 3, sectionName: "Employment Details" },
+  { id: 4, sectionName: "Credit History" }
+];
+
+// Mock fields
+export const mockFields: RiskField[] = [
+  { 
+    id: 101, 
+    sectionId: 1,
+    label: "Full Name",
+    fieldType: "text",
+    isRequired: true,
+    placeholder: "Enter your full name",
+    orderIndex: 1
+  },
+  { 
+    id: 102, 
+    sectionId: 1,
+    label: "Age",
+    fieldType: "number",
+    isRequired: true,
+    placeholder: "Enter your age",
+    orderIndex: 2
+  },
+  { 
+    id: 103, 
+    sectionId: 1,
+    label: "Marital Status",
+    fieldType: "select",
+    endpointURL: "/dropdown/marital-status",
+    isRequired: true,
+    orderIndex: 3
+  },
+  { 
+    id: 201, 
+    sectionId: 2,
+    label: "Annual Income",
+    fieldType: "number",
+    isRequired: true,
+    placeholder: "Enter your annual income",
+    orderIndex: 1
+  },
+  { 
+    id: 202, 
+    sectionId: 2,
+    label: "Has Existing Loans",
+    fieldType: "checkbox",
+    isRequired: true,
+    orderIndex: 2
+  },
+  { 
+    id: 301, 
+    sectionId: 3,
+    label: "Employment Status",
+    fieldType: "select",
+    endpointURL: "/dropdown/employment-status",
+    isRequired: true,
+    orderIndex: 1,
+    valueMappings: [
+      { id: 7, text: "Employed", value: 1, fieldId: 301 },
+      { id: 8, text: "Self-Employed", value: 2, fieldId: 301 },
+      { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
+    ]
+  },
+  { 
+    id: 302, 
+    sectionId: 3,
+    label: "Years at Current Job",
+    fieldType: "number",
+    isRequired: true,
+    placeholder: "Enter years at current job",
+    orderIndex: 2
+  }
+];
+
+// Mock value mappings
+export const mockValueMappings: RiskFieldValueMapping[] = [
+  { id: 1, text: "18-25", value: 1, fieldId: 102 },
+  { id: 2, text: "26-40", value: 2, fieldId: 102 },
+  { id: 3, text: "41+", value: 3, fieldId: 102 },
+  { id: 4, text: "Low Income", value: 1, fieldId: 201 },
+  { id: 5, text: "Medium Income", value: 2, fieldId: 201 },
+  { id: 6, text: "High Income", value: 3, fieldId: 201 }
+];
+
+// Mock configuration
+export const mockRiskConfiguration_New: RiskConfiguration = {
+  id: 1,
+  name: "Standard Risk Assessment",
+  version: "1.0.0",
+  companyId: 1
+};
+
+// Mock company sections
+export const mockCompanySections: RiskCompanySection[] = [
+  {
+    id: 1,
+    companyId: 1,
+    sectionId: 1,
+    isActive: true,
+    weightage: 30,
+    fields: [
+      {
+        id: 1,
+        companySectionId: 1,
+        fieldId: 101,
+        isActive: true,
+        maxScore: 0,
+        conditions: []
+      },
+      {
+        id: 2,
+        companySectionId: 1,
+        fieldId: 102,
+        isActive: true,
+        maxScore: 30,
+        conditions: [
+          {
+            id: 1,
+            companyFieldId: 2,
+            fieldValueMappingId: 1,
+            operator: "between",
+            value: "18",
+            valueTo: "25",
+            riskScore: 30
+          },
+          {
+            id: 2,
+            companyFieldId: 2,
+            fieldValueMappingId: 2,
+            operator: "between",
+            value: "26",
+            valueTo: "40",
+            riskScore: 20
+          },
+          {
+            id: 3,
+            companyFieldId: 2,
+            fieldValueMappingId: 3,
+            operator: ">",
+            value: "40",
+            riskScore: 10
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 2,
+    companyId: 1,
+    sectionId: 2,
+    isActive: true,
+    weightage: 40,
+    fields: [
+      {
+        id: 3,
+        companySectionId: 2,
+        fieldId: 201,
+        isActive: true,
+        maxScore: 40,
+        conditions: [
+          {
+            id: 4,
+            companyFieldId: 3,
+            fieldValueMappingId: 4,
+            operator: "<",
+            value: "30000",
+            riskScore: 40
+          },
+          {
+            id: 5,
+            companyFieldId: 3,
+            fieldValueMappingId: 5,
+            operator: "between",
+            value: "30000",
+            valueTo: "70000",
+            riskScore: 20
+          },
+          {
+            id: 6,
+            companyFieldId: 3,
+            fieldValueMappingId: 6,
+            operator: ">",
+            value: "70000",
+            riskScore: 10
+          }
+        ]
+      }
+    ]
+  }
+];
 
 // Mock risk configuration
 export const mockRiskConfiguration: RiskConfiguration_Legacy = {

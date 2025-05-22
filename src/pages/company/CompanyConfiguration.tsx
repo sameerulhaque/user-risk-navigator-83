@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -13,7 +14,15 @@ import { AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions } from "@/services/api";
-import { RiskConfiguration, RiskCompanySection, RiskCompanyField, RiskFieldValueMapping, RiskCompanyFieldCondition } from "@/types/risk";
+import { 
+  RiskConfiguration, 
+  RiskCompanySection, 
+  RiskCompanyField, 
+  RiskFieldValueMapping, 
+  RiskCompanyFieldCondition,
+  RiskField,
+  RiskSection
+} from "@/types/risk";
 import axios from "axios";
 
 // Helper function to check if condition type requires inputs
@@ -28,6 +37,7 @@ const needsTwoConditionInputs = (type: string): boolean => {
 
 const CompanyConfiguration = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
+  const [companySections, setCompanySections] = useState<RiskCompanySection[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<string>("0");
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -37,8 +47,8 @@ const CompanyConfiguration = () => {
   
   // Calculate the total weight of all sections
   const calculateTotalWeight = (): number => {
-    if (!configuration || !configuration.companySections) return 0;
-    return configuration.companySections.reduce((total, section) => total + section.weightage, 0);
+    if (!companySections) return 0;
+    return companySections.reduce((total, section) => total + section.weightage, 0);
   };
 
   // Check if weights are valid (sum to 100%)
@@ -58,12 +68,12 @@ const CompanyConfiguration = () => {
           if (response.value.companySections) {
             const fieldsNeedingOptions = response.value.companySections.flatMap(section => 
               section.fields?.filter(field => 
-                field.field.endpointURL && (!field.field.valueMappings || field.field.valueMappings.length === 0)
+                field.field?.endpointURL && (!field.field?.valueMappings || field.field?.valueMappings.length === 0)
               ) || []
             );
             
             fieldsNeedingOptions.forEach(field => {
-              if (field.field.endpointURL) {
+              if (field.field?.endpointURL) {
                 fetchFieldOptions(field.field.endpointURL);
               }
             });

@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { ApiResponse, PaginatedResponse, getDefaultHeaders, getPaginationHeaders } from '@/types/api';
 import { 
@@ -236,184 +235,204 @@ export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 't
 // API functions for Risk Configuration
 export const getRiskConfiguration = async (companyId?: number, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
   try {
-    // Mock response for the new model structure
+    // Mock response for the updated model structure
     const mockConfig: RiskConfiguration = {
       id: 1,
       name: "Standard Risk Assessment",
       version: "1.0.0",
       companyId: companyId || 1, // Use provided company ID or default to 1
-      companySections: [
-        {
-          id: 1,
-          company: { id: 1, name: "Standard Risk Assessment", version: "1.0.0" },
-          section: { id: 1, sectionName: "Personal Information" },
-          isActive: true,
-          weightage: 30,
-          fields: [
-            {
-              id: 1,
-              companySection: { id: 1 } as RiskCompanySection,
-              field: {
-                id: 101,
-                section: { id: 1, sectionName: "Personal Information" },
-                label: "Full Name",
-                fieldType: "text",
-                isRequired: true,
-                placeholder: "Enter your full name",
-                orderIndex: 1
-              },
-              isActive: true,
-              maxScore: 0,
-              conditions: []
-            },
-            {
-              id: 2,
-              companySection: { id: 1 } as RiskCompanySection,
-              field: {
-                id: 102,
-                section: { id: 1, sectionName: "Personal Information" },
-                label: "Age",
-                fieldType: "number",
-                isRequired: true,
-                placeholder: "Enter your age",
-                orderIndex: 2
-              },
-              isActive: true,
-              maxScore: 30,
-              conditions: [
-                {
-                  id: 1,
-                  companyField: { id: 2 } as RiskCompanyField,
-                  fieldValueMapping: { id: 1, text: "18-25", value: 1 } as RiskFieldValueMapping,
-                  operator: "between",
-                  value: "18",
-                  valueTo: "25",
-                  riskScore: 30
-                },
-                {
-                  id: 2,
-                  companyField: { id: 2 } as RiskCompanyField,
-                  fieldValueMapping: { id: 2, text: "26-40", value: 2 } as RiskFieldValueMapping,
-                  operator: "between",
-                  value: "26",
-                  valueTo: "40",
-                  riskScore: 20
-                },
-                {
-                  id: 3,
-                  companyField: { id: 2 } as RiskCompanyField,
-                  fieldValueMapping: { id: 3, text: "41+", value: 3 } as RiskFieldValueMapping,
-                  operator: ">",
-                  value: "40",
-                  riskScore: 10
-                }
-              ]
-            }
-          ]
-        },
-        {
-          id: 2,
-          company: { id: 1, name: "Standard Risk Assessment", version: "1.0.0" },
-          section: { id: 2, sectionName: "Financial History" },
-          isActive: true,
-          weightage: 40,
-          fields: [
-            {
-              id: 3,
-              companySection: { id: 2 } as RiskCompanySection,
-              field: {
-                id: 201,
-                section: { id: 2, sectionName: "Financial History" },
-                label: "Annual Income",
-                fieldType: "number",
-                isRequired: true,
-                placeholder: "Enter your annual income",
-                orderIndex: 1
-              },
-              isActive: true,
-              maxScore: 40,
-              conditions: [
-                {
-                  id: 4,
-                  companyField: { id: 3 } as RiskCompanyField,
-                  fieldValueMapping: { id: 4, text: "Low Income", value: 1 } as RiskFieldValueMapping,
-                  operator: "<",
-                  value: "30000",
-                  riskScore: 40
-                },
-                {
-                  id: 5,
-                  companyField: { id: 3 } as RiskCompanyField,
-                  fieldValueMapping: { id: 5, text: "Medium Income", value: 2 } as RiskFieldValueMapping,
-                  operator: "between",
-                  value: "30000",
-                  valueTo: "70000",
-                  riskScore: 20
-                },
-                {
-                  id: 6,
-                  companyField: { id: 3 } as RiskCompanyField,
-                  fieldValueMapping: { id: 6, text: "High Income", value: 3 } as RiskFieldValueMapping,
-                  operator: ">",
-                  value: "70000",
-                  riskScore: 10
-                }
-              ]
-            }
-          ]
-        },
-        {
-          id: 3,
-          company: { id: 1, name: "Standard Risk Assessment", version: "1.0.0" },
-          section: { id: 3, sectionName: "Employment Details" },
-          isActive: true,
-          weightage: 30,
-          fields: [
-            {
-              id: 4,
-              companySection: { id: 3 } as RiskCompanySection,
-              field: {
-                id: 301,
-                section: { id: 3, sectionName: "Employment Details" },
-                label: "Employment Status",
-                fieldType: "select",
-                endpointURL: "/dropdown/employment-status",
-                isRequired: true,
-                orderIndex: 1,
-                valueMappings: [
-                  { id: 7, text: "Employed", value: 1, field: { id: 301 } as RiskField },
-                  { id: 8, text: "Self-Employed", value: 2, field: { id: 301 } as RiskField },
-                  { id: 9, text: "Unemployed", value: 3, field: { id: 301 } as RiskField }
-                ]
-              },
-              isActive: true,
-              maxScore: 30,
-              conditions: [
-                {
-                  id: 7,
-                  companyField: { id: 4 } as RiskCompanyField,
-                  fieldValueMapping: { id: 7, text: "Employed", value: 1 } as RiskFieldValueMapping,
-                  riskScore: 10
-                },
-                {
-                  id: 8,
-                  companyField: { id: 4 } as RiskCompanyField,
-                  fieldValueMapping: { id: 8, text: "Self-Employed", value: 2 } as RiskFieldValueMapping,
-                  riskScore: 20
-                },
-                {
-                  id: 9,
-                  companyField: { id: 4 } as RiskCompanyField,
-                  fieldValueMapping: { id: 9, text: "Unemployed", value: 3 } as RiskFieldValueMapping,
-                  riskScore: 30
-                }
-              ]
-            }
-          ]
-        }
-      ]
     };
     
+    // Also create mock company sections for the configuration
+    const mockCompanySections: RiskCompanySection[] = [
+      {
+        id: 1,
+        companyId: mockConfig.id,
+        sectionId: 1,
+        isActive: true,
+        weightage: 30,
+        fields: [
+          {
+            id: 1,
+            companySectionId: 1,
+            fieldId: 101,
+            isActive: true,
+            maxScore: 0,
+            conditions: []
+          },
+          {
+            id: 2,
+            companySectionId: 1,
+            fieldId: 102,
+            isActive: true,
+            maxScore: 30,
+            conditions: [
+              {
+                id: 1,
+                companyFieldId: 2,
+                fieldValueMappingId: 1,
+                operator: "between",
+                value: "18",
+                valueTo: "25",
+                riskScore: 30
+              },
+              {
+                id: 2,
+                companyFieldId: 2,
+                fieldValueMappingId: 2,
+                operator: "between",
+                value: "26",
+                valueTo: "40",
+                riskScore: 20
+              },
+              {
+                id: 3,
+                companyFieldId: 2,
+                fieldValueMappingId: 3,
+                operator: ">",
+                value: "40",
+                riskScore: 10
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 2,
+        companyId: mockConfig.id,
+        sectionId: 2,
+        isActive: true,
+        weightage: 40,
+        fields: [
+          {
+            id: 3,
+            companySectionId: 2,
+            fieldId: 201,
+            isActive: true,
+            maxScore: 40,
+            conditions: [
+              {
+                id: 4,
+                companyFieldId: 3,
+                fieldValueMappingId: 4,
+                operator: "<",
+                value: "30000",
+                riskScore: 40
+              },
+              {
+                id: 5,
+                companyFieldId: 3,
+                fieldValueMappingId: 5,
+                operator: "between",
+                value: "30000",
+                valueTo: "70000",
+                riskScore: 20
+              },
+              {
+                id: 6,
+                companyFieldId: 3,
+                fieldValueMappingId: 6,
+                operator: ">",
+                value: "70000",
+                riskScore: 10
+              }
+            ]
+          }
+        ]
+      },
+      {
+        id: 3,
+        companyId: mockConfig.id,
+        sectionId: 3,
+        isActive: true,
+        weightage: 30,
+        fields: [
+          {
+            id: 4,
+            companySectionId: 3,
+            fieldId: 301,
+            isActive: true,
+            maxScore: 30,
+            conditions: [
+              {
+                id: 7,
+                companyFieldId: 4,
+                fieldValueMappingId: 7,
+                riskScore: 10
+              },
+              {
+                id: 8,
+                companyFieldId: 4,
+                fieldValueMappingId: 8,
+                riskScore: 20
+              },
+              {
+                id: 9,
+                companyFieldId: 4,
+                fieldValueMappingId: 9,
+                riskScore: 30
+              }
+            ]
+          }
+        ]
+      }
+    ];
+    
+    // Also create mock sections
+    const mockSections: RiskSection[] = [
+      { id: 1, sectionName: "Personal Information" },
+      { id: 2, sectionName: "Financial History" },
+      { id: 3, sectionName: "Employment Details" }
+    ];
+    
+    // Also create mock fields
+    const mockFields: RiskField[] = [
+      { 
+        id: 101, 
+        sectionId: 1,
+        label: "Full Name",
+        fieldType: "text",
+        isRequired: true,
+        placeholder: "Enter your full name",
+        orderIndex: 1
+      },
+      { 
+        id: 102, 
+        sectionId: 1,
+        label: "Age",
+        fieldType: "number",
+        isRequired: true,
+        placeholder: "Enter your age",
+        orderIndex: 2
+      },
+      { 
+        id: 201, 
+        sectionId: 2,
+        label: "Annual Income",
+        fieldType: "number",
+        isRequired: true,
+        placeholder: "Enter your annual income",
+        orderIndex: 1
+      },
+      { 
+        id: 301, 
+        sectionId: 3,
+        label: "Employment Status",
+        fieldType: "select",
+        endpointURL: "/dropdown/employment-status",
+        isRequired: true,
+        orderIndex: 1,
+        valueMappings: [
+          { id: 7, text: "Employed", value: 1, fieldId: 301 },
+          { id: 8, text: "Self-Employed", value: 2, fieldId: 301 },
+          { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
+        ]
+      }
+    ];
+
+    // Add the mock data to MockData - we'll need this later
+    
+    // Return just the configuration object for now
     return successResponse(mockConfig);
   } catch (error) {
     console.error('Failed to fetch risk configuration:', error);
