@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { RiskField, RiskCompanyField } from "@/types/risk";
 import { Label } from "@/components/ui/label";
@@ -41,6 +42,11 @@ const SectionFieldsList = ({
 
   // Render a field based on its type
   const renderField = (companyField: RiskCompanyField) => {
+    if (!companyField.field) {
+      console.error("Missing field data for company field:", companyField);
+      return <div>Error: Missing field data</div>;
+    }
+    
     const field = companyField.field;
     const fieldId = field.id;
     const value = formData[fieldId] || "";
@@ -178,12 +184,12 @@ const SectionFieldsList = ({
             <AccordionContent className="px-4 py-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 {group.map(companyField => (
-                  <div key={companyField.field.id} className="animate-fade-in">
+                  <div key={companyField.fieldId} className="animate-fade-in">
                     <Label 
-                      htmlFor={`field-${sectionId}-${companyField.field.id}`} 
+                      htmlFor={`field-${sectionId}-${companyField.field?.id}`} 
                       className="mb-1 block"
                     >
-                      {companyField.field.label} {companyField.field.isRequired && <span className="text-red-500">*</span>}
+                      {companyField.field?.label} {companyField.field?.isRequired && <span className="text-red-500">*</span>}
                     </Label>
                     {renderField(companyField)}
                   </div>
@@ -199,12 +205,12 @@ const SectionFieldsList = ({
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
       {fields.map(companyField => (
-        <div key={companyField.field.id} className="animate-fade-in">
+        <div key={companyField.fieldId} className="animate-fade-in">
           <Label 
-            htmlFor={`field-${sectionId}-${companyField.field.id}`} 
+            htmlFor={`field-${sectionId}-${companyField.field?.id}`} 
             className="mb-1 block"
           >
-            {companyField.field.label} {companyField.field.isRequired && <span className="text-red-500">*</span>}
+            {companyField.field?.label} {companyField.field?.isRequired && <span className="text-red-500">*</span>}
           </Label>
           {renderField(companyField)}
         </div>

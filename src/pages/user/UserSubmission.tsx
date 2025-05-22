@@ -19,7 +19,9 @@ import {
   RiskConfiguration,
   RiskCompanySection,
   RiskCompanyField,
-  UserSubmission as UserSubmissionType 
+  UserSubmission as UserSubmissionType,
+  RiskSection,
+  RiskField
 } from "@/types/risk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -73,15 +75,17 @@ const UserSubmission = () => {
             activeFields.forEach(field => {
               // Use a sensible default value based on field type
               let defaultValue;
-              switch (field.field.fieldType) {
-                case 'number': defaultValue = ""; break;
-                case 'checkbox': defaultValue = false; break;
-                case 'date': defaultValue = ""; break;
-                case 'select': defaultValue = ""; break;
-                default: defaultValue = ""; break;
+              if (field.field) {
+                switch (field.field.fieldType) {
+                  case 'number': defaultValue = ""; break;
+                  case 'checkbox': defaultValue = false; break;
+                  case 'date': defaultValue = ""; break;
+                  case 'select': defaultValue = ""; break;
+                  default: defaultValue = ""; break;
+                }
+                
+                initialFormData[section.id][field.field.id] = defaultValue;
               }
-              
-              initialFormData[section.id][field.field.id] = defaultValue;
             });
           });
           
@@ -133,7 +137,7 @@ const UserSubmission = () => {
       const activeFields = section.fields?.filter(f => f.isActive) || [];
       
       activeFields.forEach(field => {
-        if (field.field.isRequired) {
+        if (field.field?.isRequired) {
           totalRequiredFields++;
           const value = formData[section.id]?.[field.field.id];
           if (value !== undefined && value !== null && value !== "") {

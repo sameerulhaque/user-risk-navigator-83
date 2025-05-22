@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -47,8 +46,8 @@ const CompanyConfiguration = () => {
   
   // Calculate the total weight of all sections
   const calculateTotalWeight = (): number => {
-    if (!companySections) return 0;
-    return companySections.reduce((total, section) => total + section.weightage, 0);
+    if (!configuration?.companySections) return 0;
+    return configuration.companySections.reduce((total, section) => total + section.weightage, 0);
   };
 
   // Check if weights are valid (sum to 100%)
@@ -465,6 +464,11 @@ const CompanyConfiguration = () => {
 
   // Render field configuration
   const renderField = (field: RiskCompanyField, section: RiskCompanySection) => {
+    if (!field.field) {
+      console.error("Field data missing:", field);
+      return null;
+    }
+    
     // Check if the field already has value mappings from the API response
     const hasExistingConditions = field.conditions && field.conditions.length > 0;
     const hasValueMappings = field.field.valueMappings && field.field.valueMappings.length > 0;
@@ -498,10 +502,11 @@ const CompanyConfiguration = () => {
                   // Create a new condition based on the value mapping
                   const newCondition: RiskCompanyFieldCondition = {
                     id: mapping.id,
-                    companyField: field,
-                    fieldValueMapping: mapping,
+                    companyFieldId: field.id,
+                    fieldValueMappingId: mapping.id,
                     operator: "=",
-                    riskScore: 0
+                    riskScore: 0,
+                    fieldValueMapping: mapping
                   };
                   
                   // Add this new condition to the field
@@ -539,15 +544,16 @@ const CompanyConfiguration = () => {
                   // Create a new condition from API options
                   const newCondition: RiskCompanyFieldCondition = {
                     id: option.id,
-                    companyField: field,
+                    companyFieldId: field.id,
+                    fieldValueMappingId: option.id,
+                    operator: "=",
+                    riskScore: 0,
                     fieldValueMapping: {
                       id: option.id,
                       text: option.label || String(option.id),
                       value: option.id,
-                      field: field.field
-                    },
-                    operator: "=",
-                    riskScore: 0
+                      fieldId: field.fieldId
+                    }
                   };
                   
                   // Add this new condition to the field
@@ -694,7 +700,7 @@ const CompanyConfiguration = () => {
                   value={index.toString()} 
                   className="whitespace-nowrap py-2 px-4 font-medium text-gray-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                 >
-                  {section.section.sectionName} ({section.weightage}%)
+                  {section.section?.sectionName} ({section.weightage}%)
                 </TabsTrigger>
               ))}
             </TabsList>
@@ -706,7 +712,7 @@ const CompanyConfiguration = () => {
                 <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle className="text-gray-800">{section.section.sectionName}</CardTitle>
+                      <CardTitle className="text-gray-800">{section.section?.sectionName}</CardTitle>
                       <CardDescription className="text-gray-600">
                         Section Weightage: {section.weightage}%
                       </CardDescription>

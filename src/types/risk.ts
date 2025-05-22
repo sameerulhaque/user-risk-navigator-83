@@ -28,7 +28,8 @@ export class RiskConfiguration {
   id!: number;
   name!: string;
   version!: string;
-  companyId!: number; // Added company ID property
+  companyId!: number;
+  companySections?: RiskCompanySection[];
 }
 
 export class RiskCompanySection {
@@ -38,6 +39,7 @@ export class RiskCompanySection {
   isActive!: boolean;
   weightage!: number;
   fields?: RiskCompanyField[];
+  section?: RiskSection; // Relationship to RiskSection
 }
 
 export class RiskCompanyField {
@@ -47,6 +49,7 @@ export class RiskCompanyField {
   isActive!: boolean;
   maxScore?: number;
   conditions?: RiskCompanyFieldCondition[];
+  field?: RiskField; // Relationship to RiskField
 }
 
 export class RiskCompanyFieldCondition {
@@ -57,6 +60,7 @@ export class RiskCompanyFieldCondition {
   value?: string;
   valueTo?: string;
   riskScore!: number;
+  fieldValueMapping?: RiskFieldValueMapping; // Relationship to RiskFieldValueMapping
 }
 
 export class RiskUserAssessment {
