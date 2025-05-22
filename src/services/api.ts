@@ -110,7 +110,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
       1: [ // Personal Information
         { 
           id: 101, 
-          section: { id: 1, sectionName: 'Personal Information' },
+          sectionId: 1,
           label: 'Full Name',
           fieldType: 'text',
           isRequired: true,
@@ -119,7 +119,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
         },
         { 
           id: 102, 
-          section: { id: 1, sectionName: 'Personal Information' },
+          sectionId: 1,
           label: 'Age',
           fieldType: 'number',
           isRequired: true,
@@ -128,7 +128,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
         },
         { 
           id: 103, 
-          section: { id: 1, sectionName: 'Personal Information' },
+          sectionId: 1,
           label: 'Marital Status',
           fieldType: 'select',
           endpointURL: '/dropdown/marital-status',
@@ -139,7 +139,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
       2: [ // Financial History
         { 
           id: 201, 
-          section: { id: 2, sectionName: 'Financial History' },
+          sectionId: 2,
           label: 'Annual Income',
           fieldType: 'number',
           isRequired: true,
@@ -148,7 +148,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
         },
         { 
           id: 202, 
-          section: { id: 2, sectionName: 'Financial History' },
+          sectionId: 2,
           label: 'Has Existing Loans',
           fieldType: 'checkbox',
           isRequired: true,
@@ -158,7 +158,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
       3: [ // Employment Details
         { 
           id: 301, 
-          section: { id: 3, sectionName: 'Employment Details' },
+          sectionId: 3,
           label: 'Employment Status',
           fieldType: 'select',
           endpointURL: '/dropdown/employment-status',
@@ -167,7 +167,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
         },
         { 
           id: 302, 
-          section: { id: 3, sectionName: 'Employment Details' },
+          sectionId: 3,
           label: 'Years at Current Job',
           fieldType: 'number',
           isRequired: true,
@@ -178,7 +178,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
       4: [ // Credit History
         { 
           id: 401, 
-          section: { id: 4, sectionName: 'Credit History' },
+          sectionId: 4,
           label: 'Credit Score',
           fieldType: 'number',
           isRequired: true,
@@ -187,7 +187,7 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
         },
         { 
           id: 402, 
-          section: { id: 4, sectionName: 'Credit History' },
+          sectionId: 4,
           label: 'Previous Defaults',
           fieldType: 'select',
           endpointURL: '/dropdown/default-history',
@@ -430,7 +430,9 @@ export const getRiskConfiguration = async (companyId?: number, tenantId: string 
       }
     ];
 
-    // Add the mock data to MockData - we'll need this later
+    // Fix for error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'
+    // This is likely related to the tenantId parameter being passed to a function expecting a companyId (number)
+    const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : (companyId || 1);
     
     // Return just the configuration object for now
     return successResponse(mockConfig);

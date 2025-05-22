@@ -1,4 +1,3 @@
-
 // Base model classes
 export class RiskSection {
   id!: number;
@@ -15,6 +14,8 @@ export class RiskField {
   placeholder?: string;
   orderIndex?: number;
   valueMappings?: RiskFieldValueMapping[];
+  // Navigation property
+  section?: RiskSection;
 }
 
 export class RiskFieldValueMapping {
@@ -39,7 +40,8 @@ export class RiskCompanySection {
   isActive!: boolean;
   weightage!: number;
   fields?: RiskCompanyField[];
-  section?: RiskSection; // Relationship to RiskSection
+  // Navigation property
+  section?: RiskSection;
 }
 
 export class RiskCompanyField {
@@ -49,7 +51,8 @@ export class RiskCompanyField {
   isActive!: boolean;
   maxScore?: number;
   conditions?: RiskCompanyFieldCondition[];
-  field?: RiskField; // Relationship to RiskField
+  // Navigation property
+  field?: RiskField;
 }
 
 export class RiskCompanyFieldCondition {
@@ -60,7 +63,8 @@ export class RiskCompanyFieldCondition {
   value?: string;
   valueTo?: string;
   riskScore!: number;
-  fieldValueMapping?: RiskFieldValueMapping; // Relationship to RiskFieldValueMapping
+  // Navigation property
+  fieldValueMapping?: RiskFieldValueMapping;
 }
 
 export class RiskUserAssessment {
@@ -78,6 +82,8 @@ export class RiskUserAssessmentSectionScore {
   companySectionId!: number;
   score!: number;
   maxPossible!: number;
+  // Navigation properties
+  companySection?: RiskCompanySection;
 }
 
 // Legacy compatibility types 

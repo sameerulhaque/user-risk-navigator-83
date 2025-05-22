@@ -109,12 +109,18 @@ export function calculateRiskScore(
 
 // Convert RiskUserAssessment to the legacy RiskScore format
 export function convertToLegacyRiskScore(assessment: RiskUserAssessment): RiskScore {
-  const sectionScores = assessment.sectionScores?.map(sectionScore => ({
-    sectionId: sectionScore.companySection.id,
-    sectionName: sectionScore.companySection.section.sectionName,
-    score: sectionScore.score,
-    maxPossible: sectionScore.maxPossible
-  })) || [];
+  const sectionScores = assessment.sectionScores?.map(sectionScore => {
+    // Handle the case when companySection navigation property is not loaded
+    const sectionId = sectionScore.companySection?.id || sectionScore.companySectionId;
+    const sectionName = sectionScore.companySection?.section?.sectionName || 'Unknown Section';
+    
+    return {
+      sectionId,
+      sectionName,
+      score: sectionScore.score,
+      maxPossible: sectionScore.maxPossible
+    };
+  }) || [];
 
   return {
     userId: assessment.userId,
