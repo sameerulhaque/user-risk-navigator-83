@@ -233,14 +233,17 @@ export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 't
 };
 
 // API functions for Risk Configuration
-export const getRiskConfiguration = async (companyId?: number, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
+export const getRiskConfiguration = async (companyId?: number | string, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
   try {
+    // Convert companyId to number if it's a string
+    const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : (companyId || 1);
+
     // Mock response for the updated model structure
     const mockConfig: RiskConfiguration = {
       id: 1,
       name: "Standard Risk Assessment",
       version: "1.0.0",
-      companyId: companyId || 1, // Use provided company ID or default to 1
+      companyId: companyIdNumber, // Use provided company ID or default to 1
     };
     
     // Also create mock company sections for the configuration
@@ -430,10 +433,6 @@ export const getRiskConfiguration = async (companyId?: number, tenantId: string 
       }
     ];
 
-    // Fix for error TS2345: Argument of type 'string' is not assignable to parameter of type 'number'
-    // This is likely related to the tenantId parameter being passed to a function expecting a companyId (number)
-    const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : (companyId || 1);
-    
     // Return just the configuration object for now
     return successResponse(mockConfig);
   } catch (error) {
@@ -515,7 +514,7 @@ const convertToLegacyFormat = (config: RiskConfiguration): RiskConfiguration_Leg
   return legacyConfig;
 };
 
-// Helper function to convert operator to condition type
+// Helper function to get condition type from operator
 const getConditionType = (operator?: string): string => {
   switch (operator) {
     case '>': return 'greaterThan';
@@ -530,9 +529,12 @@ const getConditionType = (operator?: string): string => {
 };
 
 // Export a compatibility function that uses the new model but returns data in the legacy format
-export const getRiskConfigurationLegacy = async (tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration_Legacy>> => {
+export const getRiskConfigurationLegacy = async (companyId?: number | string, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration_Legacy>> => {
   try {
-    const response = await getRiskConfiguration(tenantId);
+    // Convert companyId to number if needed
+    const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : companyId;
+    
+    const response = await getRiskConfiguration(companyIdNumber, tenantId);
     if (response.isSuccess && response.value) {
       const legacyFormat = convertToLegacyFormat(response.value);
       return successResponse(legacyFormat);
