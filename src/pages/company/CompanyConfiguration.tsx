@@ -14,7 +14,7 @@ import { AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions } from "@/services/api";
-import { RiskConfiguration, Section, Field, FieldValue, ConditionOperator } from "@/types/risk";
+import { RiskConfiguration, RiskCompanySection, RiskCompanyField, RiskFieldValueMapping, RiskField } from "@/types/risk";
 import axios from "axios";
 
 // Helper function to check if condition type requires inputs
@@ -27,6 +27,16 @@ const needsTwoConditionInputs = (type: string): boolean => {
   return type === "between";
 };
 
+// Legacy compatibility interface for field values - will be refactored later
+interface FieldValue {
+  id: number;
+  value: string;
+  condition: string;  
+  conditionType: string;
+  weightage: number;
+  condition2?: string;  
+}
+
 const CompanyConfiguration = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
   const [loading, setLoading] = useState<boolean>(true);
@@ -38,8 +48,8 @@ const CompanyConfiguration = () => {
   
   // Calculate the total weight of all sections
   const calculateTotalWeight = (): number => {
-    if (!configuration) return 0;
-    return configuration.sections.reduce((total, section) => total + section.weightage, 0);
+    if (!configuration || !configuration.companySections) return 0;
+    return configuration.companySections.reduce((total, section) => total + section.weightage, 0);
   };
 
   // Check if weights are valid (sum to 100%)
@@ -55,18 +65,20 @@ const CompanyConfiguration = () => {
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
-          // Only fetch field options for fields with valueApi that don't already have fieldValues
-          const fieldsNeedingOptions = response.value.sections.flatMap(section => 
-            section.fields.filter(field => 
-              field.valueApi && (!field.fieldValues || field.fieldValues.length === 0)
-            )
-          );
-          
-          fieldsNeedingOptions.forEach(field => {
-            if (field.valueApi) {
-              fetchFieldOptions(field.valueApi);
-            }
-          });
+          // Only fetch field options for fields with valueApi that don't already have valueMappings
+          if (response.value.companySections) {
+            const fieldsNeedingOptions = response.value.companySections.flatMap(section => 
+              section.fields?.filter(field => 
+                field.field.endpointURL && (!field.field.valueMappings || field.field.valueMappings.length === 0)
+              ) || []
+            );
+            
+            fieldsNeedingOptions.forEach(field => {
+              if (field.field.endpointURL) {
+                fetchFieldOptions(field.field.endpointURL);
+              }
+            });
+          }
         } else {
           toast({
             title: "Error",
@@ -166,9 +178,9 @@ const CompanyConfiguration = () => {
   };
 
   const updateSectionWeightage = (sectionId: number, weightage: number) => {
-    if (!configuration) return;
+    if (!configuration || !configuration.companySections) return;
     
-    const updatedSections = configuration.sections.map(section => {
+    const updatedSections = configuration.companySections.map(section => {
       if (section.id === sectionId) {
         return { ...section, weightage };
       }
@@ -177,7 +189,7 @@ const CompanyConfiguration = () => {
 
     setConfiguration({
       ...configuration,
-      sections: updatedSections,
+      companySections: updatedSections,
     });
   };
 
@@ -187,20 +199,20 @@ const CompanyConfiguration = () => {
     valueId: number, 
     weightage: number
   ) => {
-    if (!configuration) return;
+    if (!configuration || !configuration.companySections) return;
     
-    const updatedSections = configuration.sections.map(section => {
+    const updatedSections = configuration.companySections.map(section => {
       if (section.id === sectionId) {
-        const updatedFields = section.fields.map(field => {
+        const updatedFields = section.fields?.map(field => {
           if (field.id === fieldId) {
-            const updatedFieldValues = field.fieldValues.map(fieldValue => {
-              if (fieldValue.id === valueId) {
-                return { ...fieldValue, weightage };
+            const updatedConditions = field.conditions?.map(condition => {
+              if (condition.id === valueId) {
+                return { ...condition, riskScore: weightage };
               }
-              return fieldValue;
+              return condition;
             });
             
-            return { ...field, fieldValues: updatedFieldValues };
+            return { ...field, conditions: updatedConditions };
           }
           return field;
         });
@@ -212,7 +224,7 @@ const CompanyConfiguration = () => {
 
     setConfiguration({
       ...configuration,
-      sections: updatedSections,
+      companySections: updatedSections,
     });
   };
 
@@ -222,20 +234,20 @@ const CompanyConfiguration = () => {
     valueId: number, 
     condition: string
   ) => {
-    if (!configuration) return;
+    if (!configuration || !configuration.companySections) return;
     
-    const updatedSections = configuration.sections.map(section => {
+    const updatedSections = configuration.companySections.map(section => {
       if (section.id === sectionId) {
-        const updatedFields = section.fields.map(field => {
+        const updatedFields = section.fields?.map(field => {
           if (field.id === fieldId) {
-            const updatedFieldValues = field.fieldValues.map(fieldValue => {
-              if (fieldValue.id === valueId) {
-                return { ...fieldValue, condition: condition as ConditionOperator };
+            const updatedConditions = field.conditions?.map(condition => {
+              if (condition.id === valueId) {
+                return { ...condition, operator: condition };
               }
-              return fieldValue;
+              return condition;
             });
             
-            return { ...field, fieldValues: updatedFieldValues };
+            return { ...field, conditions: updatedConditions };
           }
           return field;
         });
@@ -247,7 +259,7 @@ const CompanyConfiguration = () => {
 
     setConfiguration({
       ...configuration,
-      sections: updatedSections,
+      companySections: updatedSections,
     });
   };
 
@@ -257,20 +269,28 @@ const CompanyConfiguration = () => {
     valueId: number, 
     conditionType: string
   ) => {
-    if (!configuration) return;
+    if (!configuration || !configuration.companySections) return;
     
-    const updatedSections = configuration.sections.map(section => {
+    const updatedSections = configuration.companySections.map(section => {
       if (section.id === sectionId) {
-        const updatedFields = section.fields.map(field => {
+        const updatedFields = section.fields?.map(field => {
           if (field.id === fieldId) {
-            const updatedFieldValues = field.fieldValues.map(fieldValue => {
-              if (fieldValue.id === valueId) {
-                return { ...fieldValue, conditionType };
+            const updatedConditions = field.conditions?.map(condition => {
+              if (condition.id === valueId) {
+                // Convert conditionType to operator
+                let operator;
+                switch (conditionType) {
+                  case 'greaterThan': operator = '>'; break;
+                  case 'lessThan': operator = '<'; break;
+                  case 'equals': operator = '='; break;
+                  default: operator = conditionType; break;
+                }
+                return { ...condition, operator };
               }
-              return fieldValue;
+              return condition;
             });
             
-            return { ...field, fieldValues: updatedFieldValues };
+            return { ...field, conditions: updatedConditions };
           }
           return field;
         });
@@ -282,72 +302,82 @@ const CompanyConfiguration = () => {
 
     setConfiguration({
       ...configuration,
-      sections: updatedSections,
+      companySections: updatedSections,
     });
   };
 
-  // Fixed function - use fieldValue.id instead of valueId
+  // Fixed function - use condition.id instead of valueId
   const updateFieldValueCondition2 = (
     sectionId: number, 
     fieldId: number, 
-    fieldValueId: number,  
+    conditionId: number,  
     condition2Value: string
   ) => {
-    if (!configuration) return;
+    if (!configuration || !configuration.companySections) return;
     
-    const updatedSections = configuration.sections.map(s => {
-      if (s.id === sectionId) {
-        const updatedFields = s.fields.map(f => {
-          if (f.id === fieldId) {
-            const updatedFieldValues = f.fieldValues.map(fv => {
-              if (fv.id === fieldValueId) {  
-                return { ...fv, condition2: condition2Value };
+    const updatedSections = configuration.companySections.map(section => {
+      if (section.id === sectionId) {
+        const updatedFields = section.fields?.map(field => {
+          if (field.id === fieldId) {
+            const updatedConditions = field.conditions?.map(condition => {
+              if (condition.id === conditionId) {  
+                return { ...condition, valueTo: condition2Value };
               }
-              return fv;
+              return condition;
             });
             
-            return { ...f, fieldValues: updatedFieldValues };
+            return { ...field, conditions: updatedConditions };
           }
-          return f;
+          return field;
         });
         
-        return { ...s, fields: updatedFields };
+        return { ...section, fields: updatedFields };
       }
-      return s;
+      return section;
     });
 
     setConfiguration({
       ...configuration,
-      sections: updatedSections,
+      companySections: updatedSections,
     });
   };
 
-  // Render field value configuration
-  const renderFieldValue = (fieldValue: FieldValue, field: Field, section: Section) => {
-    const isCustomCondition = isCustomConditionType(fieldValue.conditionType);
-    const isBetweenCondition = needsTwoConditionInputs(fieldValue.conditionType);
+  // Render field value configuration (condition)
+  const renderFieldValue = (condition: any, field: RiskCompanyField, section: RiskCompanySection) => {
+    // Determine condition type from operator for display
+    let conditionType = "equals";
+    if (condition.operator === ">") conditionType = "greaterThan";
+    else if (condition.operator === "<") conditionType = "lessThan";
+    else if (condition.operator === "between") conditionType = "between";
+    else if (condition.operator === "contains") conditionType = "contains";
+    else if (condition.operator === "isEmpty") conditionType = "isEmpty";
+    else if (condition.operator === "isNotEmpty") conditionType = "isNotEmpty";
+    
+    const isCustomCondition = isCustomConditionType(conditionType);
+    const isBetweenCondition = needsTwoConditionInputs(conditionType);
+    const fieldValue = condition.fieldValueMapping?.text || "Custom condition";
 
     return (
-      <div key={fieldValue.id} className="border border-gray-200 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow">
+      <div key={condition.id} className="border border-gray-200 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <Label className="text-gray-700 font-medium">Field Value</Label>
-            <div className="font-medium mt-1 bg-blue-50 p-2 rounded text-gray-800">{fieldValue.value}</div>
+            <div className="font-medium mt-1 bg-blue-50 p-2 rounded text-gray-800">{fieldValue}</div>
           </div>
           
           <div>
-            <Label htmlFor={`condition-type-${section.id}-${field.id}-${fieldValue.id}`} className="text-gray-700 font-medium">Condition Type</Label>
+            <Label htmlFor={`condition-type-${section.id}-${field.id}-${condition.id}`} className="text-gray-700 font-medium">Condition Type</Label>
             <Select
-              value={fieldValue.conditionType || "equals"} // Ensure there's always a default value
+              value={conditionType}
               onValueChange={(value) => updateFieldValueConditionType(
                 section.id, 
                 field.id, 
-                fieldValue.id, 
+                condition.id, 
                 value
               )}
             >
               <SelectTrigger 
-                id={`condition-type-${section.id}-${field.id}-${fieldValue.id}`}
+                id={`condition-type-${section.id}-${field.id}-${condition.id}`}
                 className="mt-1 border-gray-200 bg-white"
               >
                 <SelectValue placeholder="Select condition type" />
@@ -370,14 +400,14 @@ const CompanyConfiguration = () => {
         {isCustomCondition && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
             <div>
-              <Label htmlFor={`condition-${section.id}-${field.id}-${fieldValue.id}`} className="text-gray-700 font-medium">Condition Value 1</Label>
+              <Label htmlFor={`condition-${section.id}-${field.id}-${condition.id}`} className="text-gray-700 font-medium">Condition Value 1</Label>
               <Input
-                id={`condition-${section.id}-${field.id}-${fieldValue.id}`}
-                value={fieldValue.condition || ""}
+                id={`condition-${section.id}-${field.id}-${condition.id}`}
+                value={condition.value || ""}
                 onChange={(e) => updateFieldValueCondition(
                   section.id, 
                   field.id, 
-                  fieldValue.id, 
+                  condition.id, 
                   e.target.value
                 )}
                 className="mt-1 border-gray-200 bg-white"
@@ -386,14 +416,14 @@ const CompanyConfiguration = () => {
             
             {isBetweenCondition && (
               <div>
-                <Label htmlFor={`condition2-${section.id}-${field.id}-${fieldValue.id}`} className="text-gray-700 font-medium">Condition Value 2</Label>
+                <Label htmlFor={`condition2-${section.id}-${field.id}-${condition.id}`} className="text-gray-700 font-medium">Condition Value 2</Label>
                 <Input
-                  id={`condition2-${section.id}-${field.id}-${fieldValue.id}`}
-                  value={fieldValue.condition2 || ""}
+                  id={`condition2-${section.id}-${field.id}-${condition.id}`}
+                  value={condition.valueTo || ""}
                   onChange={(e) => updateFieldValueCondition2(
                     section.id, 
                     field.id, 
-                    fieldValue.id,
+                    condition.id,
                     e.target.value
                   )}
                   className="mt-1 border-gray-200 bg-white"
@@ -406,14 +436,14 @@ const CompanyConfiguration = () => {
           
         <div>
           <Label 
-            htmlFor={`weightage-${section.id}-${field.id}-${fieldValue.id}`}
+            htmlFor={`weightage-${section.id}-${field.id}-${condition.id}`}
             className="mb-1 block text-gray-700 font-medium"
           >
-            Risk Weightage: {fieldValue.weightage}%
+            Risk Weightage: {condition.riskScore}%
           </Label>
           <Slider
-            id={`weightage-${section.id}-${field.id}-${fieldValue.id}`}
-            value={[fieldValue.weightage]}
+            id={`weightage-${section.id}-${field.id}-${condition.id}`}
+            value={[condition.riskScore]}
             min={0}
             max={100}
             step={1}
@@ -421,7 +451,7 @@ const CompanyConfiguration = () => {
             onValueChange={([value]) => updateFieldValueWeightage(
               section.id, 
               field.id, 
-              fieldValue.id, 
+              condition.id, 
               value
             )}
           />
@@ -436,18 +466,19 @@ const CompanyConfiguration = () => {
   };
 
   // Render field configuration
-  const renderField = (field: Field, section: Section) => {
-    // Check if the field already has values from the API response
-    const hasExistingFieldValues = field.fieldValues && field.fieldValues.length > 0;
+  const renderField = (field: RiskCompanyField, section: RiskCompanySection) => {
+    // Check if the field already has value mappings from the API response
+    const hasExistingConditions = field.conditions && field.conditions.length > 0;
+    const hasValueMappings = field.field.valueMappings && field.field.valueMappings.length > 0;
     
     // Only fetch options if needed
-    const hasFieldOptions = !hasExistingFieldValues && field.valueApi && fieldOptionsMap[field.valueApi]?.length > 0;
-    const isLoading = field.valueApi && !hasExistingFieldValues && loadingFieldOptions[field.valueApi];
+    const hasFieldOptions = field.field.endpointURL && fieldOptionsMap[field.field.endpointURL]?.length > 0;
+    const isLoading = field.field.endpointURL && loadingFieldOptions[field.field.endpointURL];
 
     return (
       <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-gray-200 rounded-md overflow-hidden mb-4 shadow-sm">
         <AccordionTrigger className="px-4 py-3 bg-gradient-to-r from-blue-50 to-white hover:bg-blue-100">
-          <span className="font-medium text-gray-700">{field.name}</span>
+          <span className="font-medium text-gray-700">{field.field.label}</span>
         </AccordionTrigger>
         <AccordionContent className="px-4 py-3">
           <div className="mb-4">
@@ -455,52 +486,102 @@ const CompanyConfiguration = () => {
               <div className="flex justify-center items-center p-8">
                 <LoadingSpinner size="md" color="blue" />
               </div>
-            ) : hasExistingFieldValues ? (
-              // Use existing field values from the API response
+            ) : hasExistingConditions ? (
+              // Use existing conditions from the API response
               <div>
-                <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
-                {field.fieldValues.map((fieldValue) => renderFieldValue(fieldValue, field, section))}
+                <h5 className="font-medium text-gray-700 mb-4">Field Conditions Configuration</h5>
+                {field.conditions?.map((condition) => renderFieldValue(condition, field, section))}
               </div>
-            ) : hasFieldOptions ? (
-              // Use options from the secondary API call
+            ) : hasValueMappings ? (
+              // Use value mappings to create conditions if none exist
               <div>
                 <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
-                {fieldOptionsMap[field.valueApi!].map((option) => {
-                  // Create a new field value since none exists
-                  let fieldValue = {
-                    id: option.id,
-                    value: option.label || String(option.id),
-                    condition: '=' as ConditionOperator,
-                    conditionType: 'equals',
-                    weightage: 0
+                {field.field.valueMappings?.map((mapping) => {
+                  // Create a new condition based on the value mapping
+                  const newCondition = {
+                    id: mapping.id,
+                    companyField: field,
+                    fieldValueMapping: mapping,
+                    operator: "=",
+                    riskScore: 0
                   };
                   
-                  // Add this new field value to the configuration
-                  if (configuration) {
-                    const updatedSections = [...configuration.sections];
+                  // Add this new condition to the field
+                  if (configuration && configuration.companySections) {
+                    const updatedSections = [...configuration.companySections];
                     const sectionIndex = updatedSections.findIndex(s => s.id === section.id);
                     if (sectionIndex !== -1) {
-                      const fieldIndex = updatedSections[sectionIndex].fields.findIndex(f => f.id === field.id);
-                      if (fieldIndex !== -1) {
-                        // Ensure fieldValues array exists
-                        if (!updatedSections[sectionIndex].fields[fieldIndex].fieldValues) {
-                          updatedSections[sectionIndex].fields[fieldIndex].fieldValues = [];
+                      const fieldIndex = updatedSections[sectionIndex].fields?.findIndex(f => f.id === field.id) ?? -1;
+                      if (fieldIndex !== -1 && updatedSections[sectionIndex].fields) {
+                        // Ensure conditions array exists
+                        if (!updatedSections[sectionIndex].fields![fieldIndex].conditions) {
+                          updatedSections[sectionIndex].fields![fieldIndex].conditions = [];
                         }
-                        updatedSections[sectionIndex].fields[fieldIndex].fieldValues.push(fieldValue);
+                        // Add the new condition if it doesn't exist already
+                        if (!updatedSections[sectionIndex].fields![fieldIndex].conditions?.find(c => c.id === newCondition.id)) {
+                          updatedSections[sectionIndex].fields![fieldIndex].conditions?.push(newCondition);
+                        }
+                        
                         setConfiguration({
                           ...configuration,
-                          sections: updatedSections
+                          companySections: updatedSections
                         });
                       }
                     }
                   }
                   
-                  return renderFieldValue(fieldValue, field, section);
+                  return renderFieldValue(newCondition, field, section);
+                })}
+              </div>
+            ) : hasFieldOptions ? (
+              // Use options from the secondary API call if no conditions or value mappings
+              <div>
+                <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
+                {fieldOptionsMap[field.field.endpointURL!].map((option) => {
+                  // Create a new condition from API options
+                  const newCondition = {
+                    id: option.id,
+                    companyField: field,
+                    fieldValueMapping: {
+                      id: option.id,
+                      text: option.label || String(option.id),
+                      value: option.id,
+                      field: field.field
+                    } as RiskFieldValueMapping,
+                    operator: "=",
+                    riskScore: 0
+                  };
+                  
+                  // Add this new condition to the field
+                  if (configuration && configuration.companySections) {
+                    const updatedSections = [...configuration.companySections];
+                    const sectionIndex = updatedSections.findIndex(s => s.id === section.id);
+                    if (sectionIndex !== -1) {
+                      const fieldIndex = updatedSections[sectionIndex].fields?.findIndex(f => f.id === field.id) ?? -1;
+                      if (fieldIndex !== -1 && updatedSections[sectionIndex].fields) {
+                        // Ensure conditions array exists
+                        if (!updatedSections[sectionIndex].fields![fieldIndex].conditions) {
+                          updatedSections[sectionIndex].fields![fieldIndex].conditions = [];
+                        }
+                        // Add the new condition if it doesn't exist already
+                        if (!updatedSections[sectionIndex].fields![fieldIndex].conditions?.find(c => c.id === newCondition.id)) {
+                          updatedSections[sectionIndex].fields![fieldIndex].conditions?.push(newCondition);
+                        }
+                        
+                        setConfiguration({
+                          ...configuration,
+                          companySections: updatedSections
+                        });
+                      }
+                    }
+                  }
+                  
+                  return renderFieldValue(newCondition, field, section);
                 })}
               </div>
             ) : (
               <div className="text-center text-gray-500 p-4 border border-dashed rounded-md">
-                {field.valueApi ? (
+                {field.field.endpointURL ? (
                   <p>No field values available from API endpoint</p>
                 ) : (
                   <p>This field does not have an API endpoint configured</p>
@@ -595,25 +676,25 @@ const CompanyConfiguration = () => {
         >
           <div className="overflow-x-auto pb-2">
             <TabsList className="inline-flex w-full overflow-x-auto flex-nowrap bg-blue-50 p-1 rounded-t-lg border border-blue-100">
-              {configuration.sections.map((section, index) => (
+              {configuration.companySections?.map((section, index) => (
                 <TabsTrigger 
                   key={section.id} 
                   value={index.toString()} 
                   className="whitespace-nowrap py-2 px-4 font-medium text-gray-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                 >
-                  {section.name} ({section.weightage}%)
+                  {section.section.sectionName} ({section.weightage}%)
                 </TabsTrigger>
               ))}
             </TabsList>
           </div>
 
-          {configuration.sections.map((section, index) => (
+          {configuration.companySections?.map((section, index) => (
             <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
               <Card className="border-gray-200 shadow-md">
                 <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
                   <div className="flex justify-between items-center">
                     <div>
-                      <CardTitle className="text-gray-800">{section.name}</CardTitle>
+                      <CardTitle className="text-gray-800">{section.section.sectionName}</CardTitle>
                       <CardDescription className="text-gray-600">
                         Section Weightage: {section.weightage}%
                       </CardDescription>
@@ -653,7 +734,7 @@ const CompanyConfiguration = () => {
 
                   <h3 className="text-lg font-medium mb-4 text-gray-700 border-b border-gray-200 pb-2">Fields</h3>
                   <Accordion type="multiple" className="space-y-2">
-                    {section.fields.map(field => renderField(field, section))}
+                    {section.fields?.map(field => renderField(field, section))}
                   </Accordion>
                 </CardContent>
               </Card>

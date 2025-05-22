@@ -14,7 +14,10 @@ import {
   UserProfile, 
   RiskScore, 
   UserSubmission,
-  RiskConfiguration_Legacy
+  RiskConfiguration_Legacy,
+  Section,
+  Field,
+  FieldValue
 } from '@/types/risk';
 import { mockRiskConfiguration, mockDropdownData, mockUsers, mockRiskScore } from './mockData';
 

@@ -1,442 +1,102 @@
-import { RiskConfiguration } from "@/types/risk";
+import { 
+  RiskConfiguration, 
+  RiskScore, 
+  UserProfile,
+  RiskConfiguration_Legacy,
+  Section
+} from '@/types/risk';
 
-// Mock risk configuration with all the requested sections and fields
-export const mockRiskConfiguration: RiskConfiguration = {
+// Mock risk configuration
+export const mockRiskConfiguration: RiskConfiguration_Legacy = {
   id: 1,
   name: "Standard Risk Assessment",
-  version: "1.0",
+  version: "1.0.0",
   sections: [
     {
       id: 1,
-      name: "Customer Profile Risk",
-      weightage: 25,
+      name: "Personal Information",
+      weightage: 30,
       fields: [
         {
-          id: 101,
-          name: "Customer Type",
-          type: "select",
-          valueApi: "/api/customer-types",
+          id: 1,
+          name: "Age",
+          type: "number",
           required: true,
-          fieldValues: []
+          fieldValues: [
+            { id: 1, value: "18-25", condition: "between", conditionType: "between", weightage: 30, condition2: "25" },
+            { id: 2, value: "26-40", condition: "between", conditionType: "between", weightage: 20, condition2: "40" },
+            { id: 3, value: "41+", condition: ">", conditionType: "greaterThan", weightage: 10 }
+          ]
         },
         {
-          id: 102,
-          name: "Occupation Type",
+          id: 2,
+          name: "Marital Status",
           type: "select",
-          valueApi: "/api/occupation-types",
+          valueApi: "/dropdown/marital-status",
           required: true,
-          fieldValues: []
-        },
-        {
-          id: 103,
-          name: "Source of Funds",
-          type: "select",
-          valueApi: "/api/fund-sources",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 104,
-          name: "KYC Verification Level",
-          type: "select",
-          valueApi: "/api/kyc-levels",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 105,
-          name: "Customer's Transaction History",
-          type: "select",
-          valueApi: "/api/transaction-history",
-          required: false,
-          fieldValues: []
+          fieldValues: [
+            { id: 4, value: "Single", condition: "=", conditionType: "equals", weightage: 25 },
+            { id: 5, value: "Married", condition: "=", conditionType: "equals", weightage: 10 },
+            { id: 6, value: "Divorced", condition: "=", conditionType: "equals", weightage: 20 }
+          ]
         }
       ]
     },
     {
       id: 2,
-      name: "Transaction Behavior Risk",
-      weightage: 20,
+      name: "Financial History",
+      weightage: 40,
       fields: [
         {
-          id: 201,
-          name: "Customer's Residence Type",
-          type: "select",
-          valueApi: "/api/residence-types",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 202,
-          name: "Transaction Frequency",
-          type: "select",
-          valueApi: "/api/transaction-frequency",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 203,
-          name: "Transaction Volume",
+          id: 3,
+          name: "Annual Income",
           type: "number",
           required: true,
-          fieldValues: []
+          fieldValues: [
+            { id: 7, value: "Low Income", condition: "<", conditionType: "lessThan", weightage: 40, condition2: "30000" },
+            { id: 8, value: "Medium Income", condition: "between", conditionType: "between", weightage: 20, condition2: "70000" },
+            { id: 9, value: "High Income", condition: ">", conditionType: "greaterThan", weightage: 10 }
+          ]
         },
         {
-          id: 204,
-          name: "First-Time Transaction with Beneficiary",
+          id: 4,
+          name: "Existing Loans",
           type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 205,
-          name: "Multiple Transactions to Different Beneficiaries",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 206,
-          name: "Round Amount Transactions",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 207,
-          name: "High-Cash Transactions",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 208,
-          name: "Abnormal Transaction Timing",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 209,
-          name: "Transaction Purpose",
-          type: "select",
-          valueApi: "/api/transaction-purposes",
           required: true,
-          fieldValues: []
-        },
-        {
-          id: 210,
-          name: "Linked Transactions",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 211,
-          name: "Payment Method Type",
-          type: "select",
-          valueApi: "/api/payment-methods",
-          required: true,
-          fieldValues: []
+          fieldValues: [
+            { id: 10, value: "Yes", condition: "=", conditionType: "equals", weightage: 30 },
+            { id: 11, value: "No", condition: "=", conditionType: "equals", weightage: 10 }
+          ]
         }
       ]
     },
     {
       id: 3,
-      name: "Beneficiary/Payee Risk",
-      weightage: 15,
+      name: "Employment Details",
+      weightage: 30,
       fields: [
         {
-          id: 301,
-          name: "Beneficiary Identity Verification",
+          id: 5,
+          name: "Employment Status",
           type: "select",
-          valueApi: "/api/verification-levels",
+          valueApi: "/dropdown/employment-status",
           required: true,
-          fieldValues: []
+          fieldValues: [
+            { id: 12, value: "Employed", condition: "=", conditionType: "equals", weightage: 10 },
+            { id: 13, value: "Self-Employed", condition: "=", conditionType: "equals", weightage: 20 },
+            { id: 14, value: "Unemployed", condition: "=", conditionType: "equals", weightage: 30 }
+          ]
         },
         {
-          id: 302,
-          name: "Relationship with Sender",
-          type: "select",
-          valueApi: "/api/relationships",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 303,
-          name: "Multiple Senders to Beneficiary",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 304,
-          name: "Beneficiary's Country Risk",
-          type: "select",
-          valueApi: "/api/country-risks",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 305,
-          name: "Beneficiary Transaction Patterns",
-          type: "select",
-          valueApi: "/api/transaction-patterns",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 306,
-          name: "Beneficiary Account Type",
-          type: "select",
-          valueApi: "/api/account-types",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 307,
-          name: "Beneficiary is Business or Individual",
-          type: "select",
-          valueApi: "/api/entity-types",
-          required: true,
-          fieldValues: []
-        }
-      ]
-    },
-    {
-      id: 4,
-      name: "Demographics & Geographic Risk",
-      weightage: 10,
-      fields: [
-        {
-          id: 401,
-          name: "Age of Customer",
+          id: 6,
+          name: "Years at Current Job",
           type: "number",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 402,
-          name: "Sender's Country of Residence",
-          type: "select",
-          valueApi: "/api/countries",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 403,
-          name: "Destination Country Risk",
-          type: "select",
-          valueApi: "/api/country-risks",
-          required: true,
-          fieldValues: []
-        },
-        {
-          id: 404,
-          name: "Dual Citizenship or Past Residency",
-          type: "checkbox",
           required: false,
-          fieldValues: []
-        },
-        {
-          id: 405,
-          name: "Transactions from High-Risk Cities",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        }
-      ]
-    },
-    {
-      id: 5,
-      name: "Occupation & Source of Funds",
-      weightage: 10,
-      fields: [
-        {
-          id: 501,
-          name: "Type of Business (for Entities)",
-          type: "select",
-          valueApi: "/api/business-types",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 502,
-          name: "Job Type (for Individuals)",
-          type: "select",
-          valueApi: "/api/job-types",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 503,
-          name: "Self-Employed Without Clear Income Documentation",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 504,
-          name: "Frequent Large Deposits Not Matching Stated Income",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 505,
-          name: "Unverified Source of Wealth",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        }
-      ]
-    },
-    {
-      id: 6,
-      name: "Sanctions & Watchlist Checks",
-      weightage: 10,
-      fields: [
-        {
-          id: 601,
-          name: "Sanctioned Customer",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 602,
-          name: "Sanctioned Beneficiary",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 603,
-          name: "Politically Exposed Person (PEP)",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 604,
-          name: "Linked to a Suspicious Network",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 605,
-          name: "Previously Flagged for Suspicious Activity Reports (SARs)",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        }
-      ]
-    },
-    {
-      id: 7,
-      name: "Device & Behavioral Risk",
-      weightage: 5,
-      fields: [
-        {
-          id: 701,
-          name: "IP Address Risk",
-          type: "select",
-          valueApi: "/api/ip-risks",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 702,
-          name: "Multiple Accounts on Same Device",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 703,
-          name: "Use of VPN/Proxy",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 704,
-          name: "Unusual Login Behavior",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 705,
-          name: "Use of Disposable Phone Numbers",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 706,
-          name: "Behavioral Anomalies",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 707,
-          name: "Login Location vs. Transaction Location",
-          type: "select",
-          valueApi: "/api/location-matches",
-          required: false,
-          fieldValues: []
-        }
-      ]
-    },
-    {
-      id: 8,
-      name: "Additional Custom Risk Checks",
-      weightage: 5,
-      fields: [
-        {
-          id: 801,
-          name: "High Number of Small Transactions",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 802,
-          name: "Cryptocurrency Transactions",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 803,
-          name: "Frequent Cancellations and Refunds",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 804,
-          name: "Large Transactions Immediately After Account Creation",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 805,
-          name: "Use of Multiple Linked Accounts",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
-        },
-        {
-          id: 806,
-          name: "Third-Party Transactions (Initiator ≠ Receiver)",
-          type: "checkbox",
-          required: false,
-          fieldValues: []
+          fieldValues: [
+            { id: 15, value: "Less than 1 year", condition: "<", conditionType: "lessThan", weightage: 30, condition2: "1" },
+            { id: 16, value: "1-5 years", condition: "between", conditionType: "between", weightage: 20, condition2: "5" },
+            { id: 17, value: "More than 5 years", condition: ">", conditionType: "greaterThan", weightage: 10 }
+          ]
         }
       ]
     }
