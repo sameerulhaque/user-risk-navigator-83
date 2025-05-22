@@ -1,128 +1,122 @@
-// Base model classes
-export class RiskSection {
-  id!: number;
-  sectionName!: string;
+
+// Basic types for risk assessment
+export type RiskStatus = 'Pending' | 'Approved' | 'Rejected';
+
+export interface Company {
+  id: number;
+  name: string;
+  configId?: number;
 }
 
-export class RiskField {
-  id!: number;
-  sectionId!: number;
-  endpointURL?: string;
+// Risk field definition
+export interface RiskField {
+  id: number;
+  sectionId: number;
   label?: string;
-  fieldType?: string;
-  isRequired?: boolean;
+  fieldType: 'text' | 'number' | 'select' | 'date' | 'checkbox';
+  isRequired: boolean;
   placeholder?: string;
-  orderIndex?: number;
+  endpointURL?: string;
+  orderIndex: number;
   valueMappings?: RiskFieldValueMapping[];
-  // Navigation property
-  section?: RiskSection;
 }
 
-export class RiskFieldValueMapping {
-  id!: number;
-  text!: string;
-  value!: number;
-  fieldId!: number;
+// Risk section definition
+export interface RiskSection {
+  id: number;
+  sectionName: string;
 }
 
-export class RiskConfiguration {
-  id!: number;
-  name!: string;
-  version!: string;
-  companyId!: number;
-  companySections?: RiskCompanySection[];
+// Field value mapping
+export interface RiskFieldValueMapping {
+  id: number;
+  text: string;
+  value: number;
+  fieldId: number;
 }
 
-export class RiskCompanySection {
-  id!: number;
-  companyId!: number;
-  sectionId!: number;
-  isActive!: boolean;
-  weightage!: number;
-  fields?: RiskCompanyField[];
-  // Navigation property
-  section?: RiskSection;
-}
-
-export class RiskCompanyField {
-  id!: number;
-  companySectionId!: number;
-  fieldId!: number;
-  isActive!: boolean;
-  maxScore?: number;
+// Company-specific field configuration
+export interface RiskCompanyField {
+  id: number;
+  companySectionId: number;
+  fieldId: number;
+  isActive: boolean;
+  maxScore: number;
   conditions?: RiskCompanyFieldCondition[];
-  // Navigation property
   field?: RiskField;
 }
 
-export class RiskCompanyFieldCondition {
-  id!: number;
-  companyFieldId!: number;
-  fieldValueMappingId!: number;
+// Field condition for risk scoring
+export interface RiskCompanyFieldCondition {
+  id: number;
+  companyFieldId: number;
+  fieldValueMappingId?: number;
   operator?: string;
   value?: string;
   valueTo?: string;
-  riskScore!: number;
-  // Navigation property
+  riskScore: number;
   fieldValueMapping?: RiskFieldValueMapping;
 }
 
-export class RiskUserAssessment {
-  id!: number;
-  userId!: number;
-  companyId!: number;
-  totalScore!: number;
-  status!: string;
-  sectionScores?: RiskUserAssessmentSectionScore[];
-}
-
-export class RiskUserAssessmentSectionScore {
-  id!: number;
-  assessmentId!: number;
-  companySectionId!: number;
-  score!: number;
-  maxPossible!: number;
-  // Navigation properties
-  companySection?: RiskCompanySection;
-}
-
-// Legacy compatibility types 
-// These will help maintain compatibility with existing components
-export type ConditionOperator = '>' | '<' | '=' | 'between' | 'contains' | 'isEmpty' | 'isNotEmpty';
-
-export interface FieldValue {
+// Company-specific section configuration
+export interface RiskCompanySection {
   id: number;
-  value: string;
-  condition: string;  
-  conditionType: string;
+  companyId: number;
+  sectionId: number;
+  isActive: boolean;
   weightage: number;
-  condition2?: string;  
+  fields?: RiskCompanyField[];
+  section?: RiskSection;
 }
 
-export interface Field {
-  id: number;
-  name: string;
-  type: 'text' | 'number' | 'select' | 'date' | 'checkbox';
-  valueApi?: string;
-  fieldValues: FieldValue[];
-  required?: boolean;
-  defaultValue?: any;
-}
-
-export interface Section {
-  id: number;
-  name: string;
-  weightage: number;
-  fields: Field[];
-}
-
-export interface RiskConfiguration_Legacy {
+// Risk configuration
+export interface RiskConfiguration {
   id: number;
   name: string;
   version: string;
-  sections: Section[];
+  companyId: number;
+  companySections?: RiskCompanySection[];
 }
 
+// User assessment fieldValue
+export interface RiskUserAssessmentFieldValue {
+  fieldId: number;
+  value: any;
+}
+
+// User assessment section
+export interface RiskUserAssessmentSection {
+  sectionId: number;
+  fields: RiskUserAssessmentFieldValue[];
+}
+
+// User assessment section score
+export interface RiskUserAssessmentSectionScore {
+  sectionId: number;
+  companySectionId: number;
+  sectionName: string;
+  score: number;
+  maxPossible: number;
+}
+
+// User assessment
+export interface RiskUserAssessment {
+  userId: number;
+  configId: number;
+  sections: RiskUserAssessmentSection[];
+}
+
+// User profile
+export interface UserProfile {
+  id: number;
+  name: string;
+  email: string;
+  riskScore?: number;
+  status: RiskStatus;
+  submissionDate: string;
+}
+
+// Risk score
 export interface RiskScore {
   userId: number;
   totalScore: number;
@@ -132,15 +126,16 @@ export interface RiskScore {
     score: number;
     maxPossible: number;
   }[];
-  status: 'Pending' | 'Approved' | 'Rejected';
+  status: RiskStatus;
   createdAt: string;
   updatedAt: string;
 }
 
+// User submission data
 export interface UserSubmission {
   userId: number;
   configId: number;
-  companyId: number; // Added company ID
+  companyId: number;
   sections: {
     sectionId: number;
     fields: {
@@ -150,11 +145,40 @@ export interface UserSubmission {
   }[];
 }
 
-export interface UserProfile {
+// Legacy types for backward compatibility
+
+// Legacy field value type
+export interface FieldValue {
+  id: number;
+  value: string;
+  condition: string;
+  conditionType: string;
+  weightage: number;
+  condition2?: string;
+}
+
+// Legacy field type
+export interface Field {
   id: number;
   name: string;
-  email: string;
-  riskScore?: number;
-  status: 'Pending' | 'Approved' | 'Rejected';
-  submissionDate?: string;
+  type: 'text' | 'number' | 'select' | 'date' | 'checkbox';
+  valueApi?: string;
+  required?: boolean;
+  fieldValues: FieldValue[];
+}
+
+// Legacy section type
+export interface Section {
+  id: number;
+  name: string;
+  weightage: number;
+  fields: Field[];
+}
+
+// Legacy risk configuration type
+export interface RiskConfiguration_Legacy {
+  id: number;
+  name: string;
+  version: string;
+  sections: Section[];
 }

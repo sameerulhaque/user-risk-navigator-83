@@ -12,7 +12,7 @@ import { Alert, AlertDescription } from "@/components/ui/alert";
 import { AlertTriangle } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions } from "@/services/api";
+import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions, getCompanies } from "@/services/api";
 import { 
   RiskConfiguration, 
   RiskCompanySection, 
@@ -20,8 +20,9 @@ import {
   RiskFieldValueMapping, 
   RiskCompanyFieldCondition,
   RiskField,
-  RiskSection
-} from "@/types/risk";
+  RiskSection,
+  Company
+} from '@/types/risk';
 import axios from "axios";
 
 // Helper function to check if condition type requires inputs
@@ -42,8 +43,39 @@ const CompanyConfiguration = () => {
   const [isSaving, setIsSaving] = useState<boolean>(false);
   const [fieldOptionsMap, setFieldOptionsMap] = useState<Record<string, any[]>>({});
   const [loadingFieldOptions, setLoadingFieldOptions] = useState<Record<string, boolean>>({});
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
+  const [loadingCompanies, setLoadingCompanies] = useState<boolean>(true);
   const { toast } = useToast();
   
+  // Load companies for dropdown
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setLoadingCompanies(true);
+      try {
+        const response = await getCompanies();
+        if (response.isSuccess && response.value) {
+          setCompanies(response.value);
+          // Auto-select the first company if available
+          if (response.value.length > 0) {
+            setSelectedCompanyId(response.value[0].id.toString());
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch companies:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch available companies",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+
+    fetchCompanies();
+  }, [toast]);
+
   // Calculate the total weight of all sections
   const calculateTotalWeight = (): number => {
     if (!configuration?.companySections) return 0;
@@ -57,9 +89,11 @@ const CompanyConfiguration = () => {
 
   useEffect(() => {
     const fetchConfiguration = async () => {
+      if (!selectedCompanyId) return;
+      
       setLoading(true);
       try {
-        const response = await getRiskConfiguration();
+        const response = await getRiskConfiguration(selectedCompanyId);
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
@@ -97,7 +131,7 @@ const CompanyConfiguration = () => {
     };
 
     fetchConfiguration();
-  }, [toast]);
+  }, [selectedCompanyId, toast]);
 
   const fetchFieldOptions = async (apiEndpoint: string) => {
     setLoadingFieldOptions(prev => ({ ...prev, [apiEndpoint]: true }));
@@ -598,26 +632,13 @@ const CompanyConfiguration = () => {
     );
   };
 
-  if (loading) {
+  if (loading && selectedCompanyId) {
     return (
       <div className="flex justify-center items-center h-64">
         <LoadingSpinner size="lg" color="blue" />
       </div>
     );
   }
-
-  if (!configuration) {
-    return (
-      <div className="text-center py-8">
-        <h3 className="text-xl font-medium mb-2 text-gray-700">No Configuration Found</h3>
-        <p className="text-gray-500">Please create a new risk configuration.</p>
-        <Button className="mt-4 bg-blue-600 hover:bg-blue-700 text-white">Create New Configuration</Button>
-      </div>
-    );
-  }
-
-  const totalWeight = calculateTotalWeight();
-  const weightDifference = 100 - totalWeight;
 
   return (
     <div className="animate-fade-in">
@@ -628,160 +649,205 @@ const CompanyConfiguration = () => {
         onAction={handleSaveConfiguration}
       />
 
+      {/* Company selection */}
+      <Card className="mb-6 shadow-md border-gray-200">
+        <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+          <CardTitle className="text-gray-800">Select Company</CardTitle>
+          <CardDescription className="text-gray-600">
+            Choose a company to view and edit its risk configuration
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="w-full md:max-w-xs">
+            {loadingCompanies ? (
+              <div className="flex items-center mt-2">
+                <LoadingSpinner size="sm" />
+                <span className="ml-2">Loading companies...</span>
+              </div>
+            ) : (
+              <Select
+                value={selectedCompanyId}
+                onValueChange={(value) => setSelectedCompanyId(value)}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Select a company" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectGroup>
+                    {companies.map((company) => (
+                      <SelectItem key={company.id} value={company.id.toString()}>
+                        {company.name}
+                      </SelectItem>
+                    ))}
+                  </SelectGroup>
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Weight validation alert */}
-      {!isValidWeightage() && (
+      {configuration && !isValidWeightage() && (
         <Alert variant="destructive" className="mb-6 bg-red-50 border-red-200 text-red-800">
           <AlertTriangle className="h-5 w-5 text-red-600" />
           <AlertDescription className="font-medium">
-            {totalWeight > 100 
-              ? `Total section weightage exceeds 100% by ${totalWeight - 100}%. Please adjust to exactly 100%.`
-              : `Total section weightage is ${totalWeight}%. ${weightDifference}% more needed to reach 100%.`
+            {calculateTotalWeight() > 100 
+              ? `Total section weightage exceeds 100% by ${calculateTotalWeight() - 100}%. Please adjust to exactly 100%.`
+              : `Total section weightage is ${calculateTotalWeight()}%. ${100 - calculateTotalWeight()}% more needed to reach 100%.`
             }
           </AlertDescription>
         </Alert>
       )}
 
-      <Card className="mb-6 shadow-md border-gray-200">
-        <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
-          <CardTitle className="text-gray-800">Configuration Details</CardTitle>
-          <CardDescription className="text-gray-600">
-            Version {configuration.version} • Last updated {new Date().toLocaleDateString()}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div>
-              <Label htmlFor="config-name" className="text-gray-700">Configuration Name</Label>
-              <Input
-                id="config-name"
-                value={configuration.name}
-                onChange={(e) => setConfiguration({ ...configuration, name: e.target.value })}
-                className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
-              />
-            </div>
-            <div>
-              <Label htmlFor="company-id" className="text-gray-700">Company ID</Label>
-              <Input
-                id="company-id"
-                type="number"
-                value={configuration.companyId || ''}
-                onChange={(e) => setConfiguration({ 
-                  ...configuration, 
-                  companyId: e.target.value ? parseInt(e.target.value) : 0 
-                })}
-                className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
-                placeholder="Enter company ID"
-              />
-            </div>
-            <div>
-              <Label htmlFor="config-version" className="text-gray-700">Version</Label>
-              <Input
-                id="config-version"
-                value={configuration.version}
-                onChange={(e) => setConfiguration({ ...configuration, version: e.target.value })}
-                className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <div className="bg-white rounded-lg shadow-md mb-6 p-1">
-        <Tabs
-          value={activeSection}
-          onValueChange={setActiveSection}
-          className="space-y-4"
-        >
-          <div className="overflow-x-auto pb-2">
-            <TabsList className="inline-flex w-full overflow-x-auto flex-nowrap bg-blue-50 p-1 rounded-t-lg border border-blue-100">
-              {configuration.companySections?.map((section, index) => (
-                <TabsTrigger 
-                  key={section.id} 
-                  value={index.toString()} 
-                  className="whitespace-nowrap py-2 px-4 font-medium text-gray-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-                >
-                  {section.section?.sectionName} ({section.weightage}%)
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </div>
-
-          {configuration.companySections?.map((section, index) => (
-            <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
-              <Card className="border-gray-200 shadow-md">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
-                  <div className="flex justify-between items-center">
-                    <div>
-                      <CardTitle className="text-gray-800">{section.section?.sectionName}</CardTitle>
-                      <CardDescription className="text-gray-600">
-                        Section Weightage: {section.weightage}%
-                      </CardDescription>
-                    </div>
-                    {/* Show a badge with the weight contribution */}
-                    <div className={`px-3 py-1 rounded-full text-sm font-medium ${
-                      isValidWeightage() ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
-                    }`}>
-                      {isValidWeightage() 
-                        ? `${section.weightage}% of 100%` 
-                        : `${section.weightage}% of ${totalWeight}%`}
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-6">
-                  <div className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
-                    <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block text-gray-700 font-medium">
-                      Section Weightage: {section.weightage}%
-                    </Label>
-                    <Slider
-                      id={`section-weightage-${section.id}`}
-                      value={[section.weightage]}
-                      min={0}
-                      max={100}
-                      step={1}
-                      className="my-2"
-                      onValueChange={([value]) => updateSectionWeightage(section.id, value)}
-                    />
-                    <div className="flex justify-between items-center">
-                      <div className="flex justify-between w-full text-xs text-gray-500">
-                        <span>0%</span>
-                        <span>50%</span>
-                        <span>100%</span>
-                      </div>
-                    </div>
-                  </div>
-
-                  <h3 className="text-lg font-medium mb-4 text-gray-700 border-b border-gray-200 pb-2">Fields</h3>
-                  <Accordion type="multiple" className="space-y-2">
-                    {section.fields?.map(field => renderField(field, section))}
-                  </Accordion>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
-        </Tabs>
-      </div>
-
-      <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 mb-8">
-        <div className={`text-sm font-medium rounded-md px-4 py-2 ${
-          isValidWeightage() 
-            ? 'bg-green-100 text-green-800' 
-            : 'bg-red-100 text-red-800'
-        }`}>
-          Total Weightage: {totalWeight}% {isValidWeightage() ? '✓' : `(${weightDifference > 0 ? '+' : ''}${weightDifference}%)`}
+      {!configuration && !loading && (
+        <div className="text-center py-8">
+          <h3 className="text-xl font-medium mb-2 text-gray-700">Please Select a Company</h3>
+          <p className="text-gray-500">Choose a company to view and edit its risk configuration.</p>
         </div>
-        
-        <Button
-          onClick={handleSaveConfiguration}
-          disabled={isSaving || !isValidWeightage()}
-          className={`${isValidWeightage() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white shadow-md transition-all`}
-        >
-          {isSaving ? (
-            <div className="flex items-center gap-2">
-              <LoadingSpinner size="sm" color="white" /> Saving...
+      )}
+
+      {configuration && (
+        <>
+          <Card className="mb-6 shadow-md border-gray-200">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+              <CardTitle className="text-gray-800">Configuration Details</CardTitle>
+              <CardDescription className="text-gray-600">
+                Version {configuration.version} • Last updated {new Date().toLocaleDateString()}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                  <Label htmlFor="config-name" className="text-gray-700">Configuration Name</Label>
+                  <Input
+                    id="config-name"
+                    value={configuration.name}
+                    onChange={(e) => setConfiguration({ ...configuration, name: e.target.value })}
+                    className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="company-id" className="text-gray-700">Company ID</Label>
+                  <Input
+                    id="company-id"
+                    type="number"
+                    value={configuration.companyId || ''}
+                    disabled={true} // Make this read-only since we're selecting from dropdown
+                    className="mt-1 border-gray-200 focus:border-blue-400 bg-white opacity-70"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="config-version" className="text-gray-700">Version</Label>
+                  <Input
+                    id="config-version"
+                    value={configuration.version}
+                    onChange={(e) => setConfiguration({ ...configuration, version: e.target.value })}
+                    className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
+                  />
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          <div className="bg-white rounded-lg shadow-md mb-6 p-1">
+            <Tabs
+              value={activeSection}
+              onValueChange={setActiveSection}
+              className="space-y-4"
+            >
+              <div className="overflow-x-auto pb-2">
+                <TabsList className="inline-flex w-full overflow-x-auto flex-nowrap bg-blue-50 p-1 rounded-t-lg border border-blue-100">
+                  {configuration.companySections?.map((section, index) => (
+                    <TabsTrigger 
+                      key={section.id} 
+                      value={index.toString()} 
+                      className="whitespace-nowrap py-2 px-4 font-medium text-gray-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                    >
+                      {section.section?.sectionName} ({section.weightage}%)
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </div>
+
+              {configuration.companySections?.map((section, index) => (
+                <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
+                  <Card className="border-gray-200 shadow-md">
+                    <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <CardTitle className="text-gray-800">{section.section?.sectionName}</CardTitle>
+                          <CardDescription className="text-gray-600">
+                            Section Weightage: {section.weightage}%
+                          </CardDescription>
+                        </div>
+                        {/* Show a badge with the weight contribution */}
+                        <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          isValidWeightage() ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
+                        }`}>
+                          {isValidWeightage() 
+                            ? `${section.weightage}% of 100%` 
+                            : `${section.weightage}% of ${calculateTotalWeight()}%`}
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent className="pt-6">
+                      <div className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
+                        <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block text-gray-700 font-medium">
+                          Section Weightage: {section.weightage}%
+                        </Label>
+                        <Slider
+                          id={`section-weightage-${section.id}`}
+                          value={[section.weightage]}
+                          min={0}
+                          max={100}
+                          step={1}
+                          className="my-2"
+                          onValueChange={([value]) => updateSectionWeightage(section.id, value)}
+                        />
+                        <div className="flex justify-between items-center">
+                          <div className="flex justify-between w-full text-xs text-gray-500">
+                            <span>0%</span>
+                            <span>50%</span>
+                            <span>100%</span>
+                          </div>
+                        </div>
+                      </div>
+
+                      <h3 className="text-lg font-medium mb-4 text-gray-700 border-b border-gray-200 pb-2">Fields</h3>
+                      <Accordion type="multiple" className="space-y-2">
+                        {section.fields?.map(field => renderField(field, section))}
+                      </Accordion>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+              ))}
+            </Tabs>
+          </div>
+
+          <div className="flex flex-col sm:flex-row justify-between items-center gap-4 mt-6 mb-8">
+            <div className={`text-sm font-medium rounded-md px-4 py-2 ${
+              isValidWeightage() 
+                ? 'bg-green-100 text-green-800' 
+                : 'bg-red-100 text-red-800'
+            }`}>
+              Total Weightage: {calculateTotalWeight()}% {isValidWeightage() ? '✓' : `(${100 - calculateTotalWeight()}%)`}
             </div>
-          ) : isValidWeightage() ? "Save Configuration" : "Adjust Weights to 100%"}
-        </Button>
-      </div>
+            
+            <Button
+              onClick={handleSaveConfiguration}
+              disabled={isSaving || !isValidWeightage()}
+              className={`${isValidWeightage() ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-400 cursor-not-allowed'} text-white shadow-md transition-all`}
+            >
+              {isSaving ? (
+                <div className="flex items-center gap-2">
+                  <LoadingSpinner size="sm" color="white" /> Saving...
+                </div>
+              ) : isValidWeightage() ? "Save Configuration" : "Adjust Weights to 100%"}
+            </Button>
+          </div>
+        </>
+      )}
     </div>
   );
 };

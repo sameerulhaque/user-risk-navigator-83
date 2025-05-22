@@ -16,9 +16,10 @@ import {
   RiskConfiguration_Legacy,
   Section,
   Field,
-  FieldValue
+  FieldValue,
+  Company
 } from '@/types/risk';
-import { mockRiskConfiguration, mockDropdownData, mockUsers, mockRiskScore } from './mockData';
+import { mockRiskConfiguration, mockDropdownData, mockUsers, mockRiskScore, mockCompanies, mockSections, mockFields, mockCompanySections } from './mockData';
 
 // Create axios instance with base configurations
 const api = axios.create({
@@ -81,15 +82,8 @@ const paginatedSuccessResponse = <T>(
 // Get default sections for companies to use in configuration
 export const getDefaultSections = async (tenantId: string = 'tenant1'): Promise<ApiResponse<RiskSection[]>> => {
   try {
-    // Mock response with default sections
-    const defaultSections: RiskSection[] = [
-      { id: 1, sectionName: 'Personal Information' },
-      { id: 2, sectionName: 'Financial History' },
-      { id: 3, sectionName: 'Employment Details' },
-      { id: 4, sectionName: 'Credit History' },
-    ];
-    
-    return successResponse(defaultSections);
+    // Return mock sections from mockData
+    return successResponse(mockSections);
   } catch (error) {
     console.error('Failed to fetch default sections:', error);
     return {
@@ -105,99 +99,9 @@ export const getDefaultSections = async (tenantId: string = 'tenant1'): Promise<
 // Get default fields for a specific section
 export const getDefaultFields = async (sectionId: number, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskField[]>> => {
   try {
-    // Mock response with default fields based on section
-    const defaultFields: Record<number, RiskField[]> = {
-      1: [ // Personal Information
-        { 
-          id: 101, 
-          sectionId: 1,
-          label: 'Full Name',
-          fieldType: 'text',
-          isRequired: true,
-          placeholder: 'Enter your full name',
-          orderIndex: 1
-        },
-        { 
-          id: 102, 
-          sectionId: 1,
-          label: 'Age',
-          fieldType: 'number',
-          isRequired: true,
-          placeholder: 'Enter your age',
-          orderIndex: 2
-        },
-        { 
-          id: 103, 
-          sectionId: 1,
-          label: 'Marital Status',
-          fieldType: 'select',
-          endpointURL: '/dropdown/marital-status',
-          isRequired: true,
-          orderIndex: 3
-        }
-      ],
-      2: [ // Financial History
-        { 
-          id: 201, 
-          sectionId: 2,
-          label: 'Annual Income',
-          fieldType: 'number',
-          isRequired: true,
-          placeholder: 'Enter your annual income',
-          orderIndex: 1
-        },
-        { 
-          id: 202, 
-          sectionId: 2,
-          label: 'Has Existing Loans',
-          fieldType: 'checkbox',
-          isRequired: true,
-          orderIndex: 2
-        }
-      ],
-      3: [ // Employment Details
-        { 
-          id: 301, 
-          sectionId: 3,
-          label: 'Employment Status',
-          fieldType: 'select',
-          endpointURL: '/dropdown/employment-status',
-          isRequired: true,
-          orderIndex: 1
-        },
-        { 
-          id: 302, 
-          sectionId: 3,
-          label: 'Years at Current Job',
-          fieldType: 'number',
-          isRequired: true,
-          placeholder: 'Enter years at current job',
-          orderIndex: 2
-        }
-      ],
-      4: [ // Credit History
-        { 
-          id: 401, 
-          sectionId: 4,
-          label: 'Credit Score',
-          fieldType: 'number',
-          isRequired: true,
-          placeholder: 'Enter your credit score',
-          orderIndex: 1
-        },
-        { 
-          id: 402, 
-          sectionId: 4,
-          label: 'Previous Defaults',
-          fieldType: 'select',
-          endpointURL: '/dropdown/default-history',
-          isRequired: true,
-          orderIndex: 2
-        }
-      ]
-    };
-    
-    return successResponse(defaultFields[sectionId] || []);
+    // Filter fields by section ID
+    const fields = mockFields.filter(field => field.sectionId === sectionId);
+    return successResponse(fields);
   } catch (error) {
     console.error(`Failed to fetch default fields for section ${sectionId}:`, error);
     return {
@@ -232,208 +136,67 @@ export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 't
   }
 };
 
+// Get available companies for dropdown
+export const getCompanies = async (tenantId: string = 'tenant1'): Promise<ApiResponse<Company[]>> => {
+  try {
+    return successResponse(mockCompanies);
+  } catch (error) {
+    console.error('Failed to fetch companies:', error);
+    return {
+      isSuccess: false,
+      errors: ['Failed to fetch companies.'],
+      validationErrors: {},
+      successes: [],
+      value: null,
+    };
+  }
+};
+
 // API functions for Risk Configuration
 export const getRiskConfiguration = async (companyId?: number | string, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
   try {
     // Convert companyId to number if it's a string
     const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : (companyId || 1);
 
-    // Mock response for the updated model structure
+    // Find company from mock data
+    const company = mockCompanies.find(c => c.id === companyIdNumber) || mockCompanies[0];
+    
+    // Get mock configuration
     const mockConfig: RiskConfiguration = {
-      id: 1,
-      name: "Standard Risk Assessment",
+      id: company.configId || 1,
+      name: `${company.name} Risk Assessment`,
       version: "1.0.0",
-      companyId: companyIdNumber, // Use provided company ID or default to 1
+      companyId: company.id,
+      companySections: []
     };
     
-    // Also create mock company sections for the configuration
-    const mockCompanySections: RiskCompanySection[] = [
-      {
-        id: 1,
-        companyId: mockConfig.id,
-        sectionId: 1,
-        isActive: true,
-        weightage: 30,
-        fields: [
-          {
-            id: 1,
-            companySectionId: 1,
-            fieldId: 101,
-            isActive: true,
-            maxScore: 0,
-            conditions: []
-          },
-          {
-            id: 2,
-            companySectionId: 1,
-            fieldId: 102,
-            isActive: true,
-            maxScore: 30,
-            conditions: [
-              {
-                id: 1,
-                companyFieldId: 2,
-                fieldValueMappingId: 1,
-                operator: "between",
-                value: "18",
-                valueTo: "25",
-                riskScore: 30
-              },
-              {
-                id: 2,
-                companyFieldId: 2,
-                fieldValueMappingId: 2,
-                operator: "between",
-                value: "26",
-                valueTo: "40",
-                riskScore: 20
-              },
-              {
-                id: 3,
-                companyFieldId: 2,
-                fieldValueMappingId: 3,
-                operator: ">",
-                value: "40",
-                riskScore: 10
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 2,
-        companyId: mockConfig.id,
-        sectionId: 2,
-        isActive: true,
-        weightage: 40,
-        fields: [
-          {
-            id: 3,
-            companySectionId: 2,
-            fieldId: 201,
-            isActive: true,
-            maxScore: 40,
-            conditions: [
-              {
-                id: 4,
-                companyFieldId: 3,
-                fieldValueMappingId: 4,
-                operator: "<",
-                value: "30000",
-                riskScore: 40
-              },
-              {
-                id: 5,
-                companyFieldId: 3,
-                fieldValueMappingId: 5,
-                operator: "between",
-                value: "30000",
-                valueTo: "70000",
-                riskScore: 20
-              },
-              {
-                id: 6,
-                companyFieldId: 3,
-                fieldValueMappingId: 6,
-                operator: ">",
-                value: "70000",
-                riskScore: 10
-              }
-            ]
-          }
-        ]
-      },
-      {
-        id: 3,
-        companyId: mockConfig.id,
-        sectionId: 3,
-        isActive: true,
-        weightage: 30,
-        fields: [
-          {
-            id: 4,
-            companySectionId: 3,
-            fieldId: 301,
-            isActive: true,
-            maxScore: 30,
-            conditions: [
-              {
-                id: 7,
-                companyFieldId: 4,
-                fieldValueMappingId: 7,
-                riskScore: 10
-              },
-              {
-                id: 8,
-                companyFieldId: 4,
-                fieldValueMappingId: 8,
-                riskScore: 20
-              },
-              {
-                id: 9,
-                companyFieldId: 4,
-                fieldValueMappingId: 9,
-                riskScore: 30
-              }
-            ]
-          }
-        ]
-      }
-    ];
+    // Add company sections
+    const configSections = mockCompanySections.filter(cs => cs.companyId === company.id);
     
-    // Also create mock sections
-    const mockSections: RiskSection[] = [
-      { id: 1, sectionName: "Personal Information" },
-      { id: 2, sectionName: "Financial History" },
-      { id: 3, sectionName: "Employment Details" }
-    ];
+    // Connect related data
+    mockConfig.companySections = configSections.map(section => {
+      // Connect section reference
+      const sectionData = mockSections.find(s => s.id === section.sectionId);
+      
+      // Connect fields
+      const fields = section.fields?.map(field => {
+        // Connect field reference
+        const fieldData = mockFields.find(f => f.id === field.fieldId);
+        
+        return {
+          ...field,
+          field: fieldData
+        };
+      });
+      
+      return {
+        ...section,
+        section: sectionData,
+        fields: fields
+      };
+    });
     
-    // Also create mock fields
-    const mockFields: RiskField[] = [
-      { 
-        id: 101, 
-        sectionId: 1,
-        label: "Full Name",
-        fieldType: "text",
-        isRequired: true,
-        placeholder: "Enter your full name",
-        orderIndex: 1
-      },
-      { 
-        id: 102, 
-        sectionId: 1,
-        label: "Age",
-        fieldType: "number",
-        isRequired: true,
-        placeholder: "Enter your age",
-        orderIndex: 2
-      },
-      { 
-        id: 201, 
-        sectionId: 2,
-        label: "Annual Income",
-        fieldType: "number",
-        isRequired: true,
-        placeholder: "Enter your annual income",
-        orderIndex: 1
-      },
-      { 
-        id: 301, 
-        sectionId: 3,
-        label: "Employment Status",
-        fieldType: "select",
-        endpointURL: "/dropdown/employment-status",
-        isRequired: true,
-        orderIndex: 1,
-        valueMappings: [
-          { id: 7, text: "Employed", value: 1, fieldId: 301 },
-          { id: 8, text: "Self-Employed", value: 2, fieldId: 301 },
-          { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
-        ]
-      }
-    ];
-
-    // Return just the configuration object for now
+    // Return the populated configuration object
     return successResponse(mockConfig);
   } catch (error) {
     console.error('Failed to fetch risk configuration:', error);

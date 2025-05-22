@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -7,13 +8,15 @@ import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionFieldsList from "@/components/SectionFieldsList";
 import { 
   getRiskConfiguration, 
   getFieldOptions, 
-  submitUserData 
+  submitUserData,
+  getCompanies 
 } from "@/services/api";
 import { 
   RiskConfiguration,
@@ -21,7 +24,8 @@ import {
   RiskCompanyField,
   UserSubmission as UserSubmissionType,
   RiskSection,
-  RiskField
+  RiskField,
+  Company
 } from "@/types/risk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
@@ -47,10 +51,40 @@ const UserSubmission = () => {
   const [loadingOptions, setLoadingOptions] = useState<Record<string, boolean>>({});
   const [completionPercentage, setCompletionPercentage] = useState<number>(0);
   const [companyId, setCompanyId] = useState<string>("");
+  const [companies, setCompanies] = useState<Company[]>([]);
+  const [loadingCompanies, setLoadingCompanies] = useState<boolean>(true);
   
   const userId = 1; // Mock user ID, would come from auth context in a real app
   const navigate = useNavigate();
   const { toast } = useToast();
+
+  // Fetch available companies for dropdown
+  useEffect(() => {
+    const fetchCompanies = async () => {
+      setLoadingCompanies(true);
+      try {
+        const response = await getCompanies();
+        if (response.isSuccess && response.value) {
+          setCompanies(response.value);
+          // Auto-select the first company if available
+          if (response.value.length > 0) {
+            setCompanyId(response.value[0].id.toString());
+          }
+        }
+      } catch (error) {
+        console.error('Failed to fetch companies:', error);
+        toast({
+          title: "Error",
+          description: "Failed to fetch available companies",
+          variant: "destructive"
+        });
+      } finally {
+        setLoadingCompanies(false);
+      }
+    };
+
+    fetchCompanies();
+  }, [toast]);
 
   useEffect(() => {
     // Load configuration based on company ID when it's entered
@@ -112,7 +146,7 @@ const UserSubmission = () => {
       }
     };
 
-    // Don't fetch initially, wait for company ID input
+    // Fetch configuration when company ID is selected
     if (companyId) {
       fetchConfiguration(parseInt(companyId));
     } else {
@@ -320,31 +354,40 @@ const UserSubmission = () => {
     <div className="animate-fade-in">
       <PageHeader
         title="Risk Assessment Form"
-        description="Please enter company ID and complete all sections to receive your risk assessment"
+        description="Please select a company and complete all sections to receive your risk assessment"
       />
 
-      {/* Company ID Input */}
+      {/* Company ID Dropdown */}
       <Card className="mb-6 card-elevated">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <Label htmlFor="company-id-input">Company ID</Label>
-              <div className="flex mt-1">
-                <Input
-                  id="company-id-input"
-                  type="number"
-                  placeholder="Enter company ID"
+              <Label htmlFor="company-select">Select Company</Label>
+              {loadingCompanies ? (
+                <div className="flex items-center mt-2">
+                  <LoadingSpinner size="sm" />
+                  <span className="ml-2">Loading companies...</span>
+                </div>
+              ) : (
+                <Select
                   value={companyId}
-                  onChange={(e) => setCompanyId(e.target.value)}
-                  className="mr-2"
-                />
-                <Button 
-                  onClick={() => setCompanyId(companyId)} 
-                  disabled={!companyId || submitting}
+                  onValueChange={(value) => setCompanyId(value)}
+                  disabled={submitting}
                 >
-                  Load
-                </Button>
-              </div>
+                  <SelectTrigger id="company-select" className="mt-1">
+                    <SelectValue placeholder="Select a company" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectGroup>
+                      {companies.map((company) => (
+                        <SelectItem key={company.id} value={company.id.toString()}>
+                          {company.name}
+                        </SelectItem>
+                      ))}
+                    </SelectGroup>
+                  </SelectContent>
+                </Select>
+              )}
             </div>
             
             {configuration && (
@@ -365,8 +408,8 @@ const UserSubmission = () => {
 
       {!configuration && !loading && (
         <div className="text-center py-8">
-          <h3 className="text-xl font-medium mb-2">Please Enter Company ID</h3>
-          <p className="text-muted-foreground">Enter a company ID to load the risk assessment form.</p>
+          <h3 className="text-xl font-medium mb-2">Please Select a Company</h3>
+          <p className="text-muted-foreground">Select a company to load the risk assessment form.</p>
         </div>
       )}
 

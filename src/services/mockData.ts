@@ -9,8 +9,18 @@ import {
   RiskFieldValueMapping,
   RiskCompanySection,
   RiskCompanyField,
-  RiskCompanyFieldCondition
+  RiskCompanyFieldCondition,
+  Company
 } from '@/types/risk';
+
+// Mock companies
+export const mockCompanies: Company[] = [
+  { id: 1, name: "ABC Corporation", configId: 1 },
+  { id: 2, name: "XYZ Industries", configId: 2 },
+  { id: 3, name: "Global Enterprises", configId: 3 },
+  { id: 4, name: "Tech Solutions", configId: 4 },
+  { id: 5, name: "Finance Partners", configId: 5 }
+];
 
 // Mock sections
 export const mockSections: RiskSection[] = [
@@ -109,7 +119,7 @@ export const mockRiskConfiguration_New: RiskConfiguration = {
   companyId: 1
 };
 
-// Mock company sections
+// Mock company sections with better organization and more data
 export const mockCompanySections: RiskCompanySection[] = [
   {
     id: 1,
@@ -117,6 +127,7 @@ export const mockCompanySections: RiskCompanySection[] = [
     sectionId: 1,
     isActive: true,
     weightage: 30,
+    section: { id: 1, sectionName: "Personal Information" },
     fields: [
       {
         id: 1,
@@ -124,6 +135,15 @@ export const mockCompanySections: RiskCompanySection[] = [
         fieldId: 101,
         isActive: true,
         maxScore: 0,
+        field: { 
+          id: 101, 
+          sectionId: 1,
+          label: "Full Name",
+          fieldType: "text",
+          isRequired: true,
+          placeholder: "Enter your full name",
+          orderIndex: 1
+        },
         conditions: []
       },
       {
@@ -132,6 +152,15 @@ export const mockCompanySections: RiskCompanySection[] = [
         fieldId: 102,
         isActive: true,
         maxScore: 30,
+        field: { 
+          id: 102, 
+          sectionId: 1,
+          label: "Age",
+          fieldType: "number",
+          isRequired: true,
+          placeholder: "Enter your age",
+          orderIndex: 2
+        },
         conditions: [
           {
             id: 1,
@@ -140,7 +169,8 @@ export const mockCompanySections: RiskCompanySection[] = [
             operator: "between",
             value: "18",
             valueTo: "25",
-            riskScore: 30
+            riskScore: 30,
+            fieldValueMapping: { id: 1, text: "18-25", value: 1, fieldId: 102 }
           },
           {
             id: 2,
@@ -149,7 +179,8 @@ export const mockCompanySections: RiskCompanySection[] = [
             operator: "between",
             value: "26",
             valueTo: "40",
-            riskScore: 20
+            riskScore: 20,
+            fieldValueMapping: { id: 2, text: "26-40", value: 2, fieldId: 102 }
           },
           {
             id: 3,
@@ -157,9 +188,27 @@ export const mockCompanySections: RiskCompanySection[] = [
             fieldValueMappingId: 3,
             operator: ">",
             value: "40",
-            riskScore: 10
+            riskScore: 10,
+            fieldValueMapping: { id: 3, text: "41+", value: 3, fieldId: 102 }
           }
         ]
+      },
+      {
+        id: 3,
+        companySectionId: 1,
+        fieldId: 103,
+        isActive: true,
+        maxScore: 20,
+        field: { 
+          id: 103, 
+          sectionId: 1,
+          label: "Marital Status",
+          fieldType: "select",
+          endpointURL: "/dropdown/marital-status",
+          isRequired: true,
+          orderIndex: 3
+        },
+        conditions: []
       }
     ]
   },
@@ -169,38 +218,334 @@ export const mockCompanySections: RiskCompanySection[] = [
     sectionId: 2,
     isActive: true,
     weightage: 40,
+    section: { id: 2, sectionName: "Financial History" },
     fields: [
       {
-        id: 3,
+        id: 4,
         companySectionId: 2,
         fieldId: 201,
         isActive: true,
         maxScore: 40,
+        field: { 
+          id: 201, 
+          sectionId: 2,
+          label: "Annual Income",
+          fieldType: "number",
+          isRequired: true,
+          placeholder: "Enter your annual income",
+          orderIndex: 1
+        },
         conditions: [
           {
             id: 4,
-            companyFieldId: 3,
+            companyFieldId: 4,
             fieldValueMappingId: 4,
             operator: "<",
             value: "30000",
-            riskScore: 40
+            riskScore: 40,
+            fieldValueMapping: { id: 4, text: "Low Income", value: 1, fieldId: 201 }
           },
           {
             id: 5,
-            companyFieldId: 3,
+            companyFieldId: 4,
             fieldValueMappingId: 5,
             operator: "between",
             value: "30000",
             valueTo: "70000",
-            riskScore: 20
+            riskScore: 20,
+            fieldValueMapping: { id: 5, text: "Medium Income", value: 2, fieldId: 201 }
           },
           {
             id: 6,
-            companyFieldId: 3,
+            companyFieldId: 4,
             fieldValueMappingId: 6,
             operator: ">",
             value: "70000",
-            riskScore: 10
+            riskScore: 10,
+            fieldValueMapping: { id: 6, text: "High Income", value: 3, fieldId: 201 }
+          }
+        ]
+      },
+      {
+        id: 5,
+        companySectionId: 2,
+        fieldId: 202,
+        isActive: true,
+        maxScore: 30,
+        field: { 
+          id: 202, 
+          sectionId: 2,
+          label: "Has Existing Loans",
+          fieldType: "checkbox",
+          isRequired: true,
+          orderIndex: 2
+        },
+        conditions: []
+      }
+    ]
+  },
+  {
+    id: 3,
+    companyId: 1,
+    sectionId: 3,
+    isActive: true,
+    weightage: 30,
+    section: { id: 3, sectionName: "Employment Details" },
+    fields: [
+      {
+        id: 6,
+        companySectionId: 3,
+        fieldId: 301,
+        isActive: true,
+        maxScore: 30,
+        field: { 
+          id: 301, 
+          sectionId: 3,
+          label: "Employment Status",
+          fieldType: "select",
+          endpointURL: "/dropdown/employment-status",
+          isRequired: true,
+          orderIndex: 1,
+          valueMappings: [
+            { id: 7, text: "Employed", value: 1, fieldId: 301 },
+            { id: 8, text: "Self-Employed", value: 2, fieldId: 301 },
+            { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
+          ]
+        },
+        conditions: [
+          {
+            id: 7,
+            companyFieldId: 6,
+            fieldValueMappingId: 7,
+            operator: "=",
+            value: "1",
+            riskScore: 10,
+            fieldValueMapping: { id: 7, text: "Employed", value: 1, fieldId: 301 }
+          },
+          {
+            id: 8,
+            companyFieldId: 6,
+            fieldValueMappingId: 8,
+            operator: "=",
+            value: "2",
+            riskScore: 20,
+            fieldValueMapping: { id: 8, text: "Self-Employed", value: 2, fieldId: 301 }
+          },
+          {
+            id: 9,
+            companyFieldId: 6,
+            fieldValueMappingId: 9,
+            operator: "=",
+            value: "3",
+            riskScore: 30,
+            fieldValueMapping: { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
+          }
+        ]
+      },
+      {
+        id: 7,
+        companySectionId: 3,
+        fieldId: 302,
+        isActive: true,
+        maxScore: 20,
+        field: { 
+          id: 302, 
+          sectionId: 3,
+          label: "Years at Current Job",
+          fieldType: "number",
+          isRequired: true,
+          placeholder: "Enter years at current job",
+          orderIndex: 2
+        },
+        conditions: []
+      }
+    ]
+  },
+  // Company 2 sections
+  {
+    id: 4,
+    companyId: 2,
+    sectionId: 1,
+    isActive: true,
+    weightage: 25,
+    section: { id: 1, sectionName: "Personal Information" },
+    fields: [
+      {
+        id: 8,
+        companySectionId: 4,
+        fieldId: 101,
+        isActive: true,
+        maxScore: 0,
+        field: { 
+          id: 101, 
+          sectionId: 1,
+          label: "Full Name",
+          fieldType: "text",
+          isRequired: true,
+          placeholder: "Enter your full name",
+          orderIndex: 1
+        },
+        conditions: []
+      },
+      {
+        id: 9,
+        companySectionId: 4,
+        fieldId: 102,
+        isActive: true,
+        maxScore: 25,
+        field: { 
+          id: 102, 
+          sectionId: 1,
+          label: "Age",
+          fieldType: "number",
+          isRequired: true,
+          placeholder: "Enter your age",
+          orderIndex: 2
+        },
+        conditions: [
+          {
+            id: 10,
+            companyFieldId: 9,
+            fieldValueMappingId: 1,
+            operator: "<",
+            value: "21",
+            riskScore: 25,
+            fieldValueMapping: { id: 1, text: "Young Adult", value: 1, fieldId: 102 }
+          },
+          {
+            id: 11,
+            companyFieldId: 9,
+            fieldValueMappingId: 2,
+            operator: "between",
+            value: "21",
+            valueTo: "65",
+            riskScore: 15,
+            fieldValueMapping: { id: 2, text: "Adult", value: 2, fieldId: 102 }
+          },
+          {
+            id: 12,
+            companyFieldId: 9,
+            fieldValueMappingId: 3,
+            operator: ">",
+            value: "65",
+            riskScore: 20,
+            fieldValueMapping: { id: 3, text: "Senior", value: 3, fieldId: 102 }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 5,
+    companyId: 2,
+    sectionId: 2,
+    isActive: true,
+    weightage: 35,
+    section: { id: 2, sectionName: "Financial History" },
+    fields: [
+      {
+        id: 10,
+        companySectionId: 5,
+        fieldId: 201,
+        isActive: true,
+        maxScore: 35,
+        field: { 
+          id: 201, 
+          sectionId: 2,
+          label: "Annual Income",
+          fieldType: "number",
+          isRequired: true,
+          placeholder: "Enter your annual income",
+          orderIndex: 1
+        },
+        conditions: [
+          {
+            id: 13,
+            companyFieldId: 10,
+            fieldValueMappingId: 4,
+            operator: "<",
+            value: "25000",
+            riskScore: 35,
+            fieldValueMapping: { id: 4, text: "Low Income", value: 1, fieldId: 201 }
+          },
+          {
+            id: 14,
+            companyFieldId: 10,
+            fieldValueMappingId: 5,
+            operator: "between",
+            value: "25000",
+            valueTo: "75000",
+            riskScore: 25,
+            fieldValueMapping: { id: 5, text: "Medium Income", value: 2, fieldId: 201 }
+          },
+          {
+            id: 15,
+            companyFieldId: 10,
+            fieldValueMappingId: 6,
+            operator: ">",
+            value: "75000",
+            riskScore: 15,
+            fieldValueMapping: { id: 6, text: "High Income", value: 3, fieldId: 201 }
+          }
+        ]
+      }
+    ]
+  },
+  {
+    id: 6,
+    companyId: 2,
+    sectionId: 3,
+    isActive: true,
+    weightage: 40,
+    section: { id: 3, sectionName: "Employment Details" },
+    fields: [
+      {
+        id: 11,
+        companySectionId: 6,
+        fieldId: 301,
+        isActive: true,
+        maxScore: 40,
+        field: { 
+          id: 301, 
+          sectionId: 3,
+          label: "Employment Status",
+          fieldType: "select",
+          endpointURL: "/dropdown/employment-status",
+          isRequired: true,
+          orderIndex: 1,
+          valueMappings: [
+            { id: 7, text: "Employed", value: 1, fieldId: 301 },
+            { id: 8, text: "Self-Employed", value: 2, fieldId: 301 },
+            { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
+          ]
+        },
+        conditions: [
+          {
+            id: 16,
+            companyFieldId: 11,
+            fieldValueMappingId: 7,
+            operator: "=",
+            value: "1",
+            riskScore: 15,
+            fieldValueMapping: { id: 7, text: "Employed", value: 1, fieldId: 301 }
+          },
+          {
+            id: 17,
+            companyFieldId: 11,
+            fieldValueMappingId: 8,
+            operator: "=",
+            value: "2",
+            riskScore: 25,
+            fieldValueMapping: { id: 8, text: "Self-Employed", value: 2, fieldId: 301 }
+          },
+          {
+            id: 18,
+            companyFieldId: 11,
+            fieldValueMappingId: 9,
+            operator: "=",
+            value: "3",
+            riskScore: 40,
+            fieldValueMapping: { id: 9, text: "Unemployed", value: 3, fieldId: 301 }
           }
         ]
       }
