@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -9,9 +8,17 @@ import { Progress } from "@/components/ui/progress";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionFieldsList from "@/components/SectionFieldsList";
-import { getRiskConfiguration, getFieldOptions, submitUserData } from "@/services/api";
-import { RiskConfiguration, Field, UserSubmission as UserSubmissionType } from "@/types/risk";
-import { calculateRiskScore } from "@/utils/riskCalculator";
+import { 
+  getRiskConfiguration, 
+  getFieldOptions, 
+  submitUserData 
+} from "@/services/api";
+import { 
+  RiskConfiguration,
+  RiskCompanySection,
+  RiskCompanyField,
+  UserSubmission as UserSubmissionType 
+} from "@/types/risk";
 import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FormData {
@@ -47,14 +54,30 @@ const UserSubmission = () => {
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
-          // Initialize form data structure
+          // Initialize form data structure for active company sections
           const initialFormData: FormData = {};
-          response.value.sections.forEach(section => {
+          const activeSections = response.value.companySections?.filter(s => s.isActive) || [];
+          
+          activeSections.forEach(section => {
             initialFormData[section.id] = {};
-            section.fields.forEach(field => {
-              initialFormData[section.id][field.id] = field.defaultValue || "";
+            
+            // Only include active fields
+            const activeFields = section.fields?.filter(f => f.isActive) || [];
+            activeFields.forEach(field => {
+              // Use a sensible default value based on field type
+              let defaultValue;
+              switch (field.field.fieldType) {
+                case 'number': defaultValue = ""; break;
+                case 'checkbox': defaultValue = false; break;
+                case 'date': defaultValue = ""; break;
+                case 'select': defaultValue = ""; break;
+                default: defaultValue = ""; break;
+              }
+              
+              initialFormData[section.id][field.field.id] = defaultValue;
             });
           });
+          
           setFormData(initialFormData);
           
           // Load options for all dropdown fields
@@ -88,11 +111,16 @@ const UserSubmission = () => {
     let totalRequiredFields = 0;
     let completedRequiredFields = 0;
 
-    configuration.sections.forEach(section => {
-      section.fields.forEach(field => {
-        if (field.required) {
+    // Only count active sections and fields
+    const activeSections = configuration.companySections?.filter(s => s.isActive) || [];
+    
+    activeSections.forEach(section => {
+      const activeFields = section.fields?.filter(f => f.isActive) || [];
+      
+      activeFields.forEach(field => {
+        if (field.field.isRequired) {
           totalRequiredFields++;
-          const value = formData[section.id]?.[field.id];
+          const value = formData[section.id]?.[field.field.id];
           if (value !== undefined && value !== null && value !== "") {
             completedRequiredFields++;
           }
@@ -110,9 +138,30 @@ const UserSubmission = () => {
   const loadAllDropdownOptions = async (config: RiskConfiguration) => {
     const optionsPromises: Promise<void>[] = [];
     
-    config.sections.forEach(section => {
-      section.fields.forEach(field => {
-        if (field.type === 'select' && field.valueApi) {
+    // Only load options for active sections and fields
+    const activeSections = config.companySections?.filter(s => s.isActive) || [];
+    
+    activeSections.forEach(section => {
+      const activeFields = section.fields?.filter(f => f.isActive) || [];
+      
+      activeFields.forEach(companyField => {
+        const field = companyField.field;
+        
+        // If field already has value mappings, we don't need to fetch from API
+        if (field.valueMappings && field.valueMappings.length > 0) {
+          // Use existing value mappings
+          const mappedOptions = field.valueMappings.map(mapping => ({
+            id: mapping.value,
+            label: mapping.text
+          }));
+          
+          setFieldOptions(prev => ({
+            ...prev,
+            [field.endpointURL || `field-${field.id}`]: mappedOptions
+          }));
+        } 
+        // Otherwise fetch from endpoint if available
+        else if (field.fieldType === 'select' && field.endpointURL) {
           optionsPromises.push(loadFieldOptions(field));
         }
       });
@@ -121,14 +170,14 @@ const UserSubmission = () => {
     await Promise.all(optionsPromises);
   };
 
-  const loadFieldOptions = async (field: Field) => {
-    if (!field.valueApi) return;
+  const loadFieldOptions = async (field: { id: number, endpointURL?: string }) => {
+    if (!field.endpointURL) return;
     
-    const cacheKey = field.valueApi;
+    const cacheKey = field.endpointURL;
     setLoadingOptions(prev => ({ ...prev, [cacheKey]: true }));
     
     try {
-      const response = await getFieldOptions(field.valueApi);
+      const response = await getFieldOptions(field.endpointURL);
       if (response.isSuccess && response.value) {
         setFieldOptions(prev => ({
           ...prev,
@@ -136,7 +185,7 @@ const UserSubmission = () => {
         }));
       }
     } catch (error) {
-      console.error(`Error loading options for ${field.name}:`, error);
+      console.error(`Error loading options for field ${field.id}:`, error);
     } finally {
       setLoadingOptions(prev => ({ ...prev, [cacheKey]: false }));
     }
@@ -159,10 +208,14 @@ const UserSubmission = () => {
     let isValid = true;
     let firstInvalidSection = 0;
     
-    configuration.sections.forEach((section, sectionIndex) => {
-      section.fields.forEach(field => {
-        if (field.required) {
-          const value = formData[section.id]?.[field.id];
+    const activeSections = configuration.companySections?.filter(s => s.isActive) || [];
+    
+    activeSections.forEach((section, sectionIndex) => {
+      const activeFields = section.fields?.filter(f => f.isActive) || [];
+      
+      activeFields.forEach(field => {
+        if (field.field.isRequired) {
+          const value = formData[section.id]?.[field.field.id];
           if (value === undefined || value === null || value === "") {
             isValid = false;
             if (firstInvalidSection === 0) {
@@ -198,10 +251,6 @@ const UserSubmission = () => {
     
     setSubmitting(true);
     try {
-      // Calculate risk score for preview (in a real app, this would be done on the server)
-      const calculatedScore = calculateRiskScore(configuration, submission);
-      console.log("Calculated Risk Score:", calculatedScore);
-      
       // Submit data to API
       const response = await submitUserData(submission);
       if (response.isSuccess) {
@@ -231,6 +280,18 @@ const UserSubmission = () => {
     }
   };
 
+  // Get active sections from configuration
+  const getActiveSections = (): RiskCompanySection[] => {
+    if (!configuration || !configuration.companySections) return [];
+    return configuration.companySections.filter(section => section.isActive);
+  };
+
+  // Get active fields from a section
+  const getActiveFields = (section: RiskCompanySection): RiskCompanyField[] => {
+    if (!section.fields) return [];
+    return section.fields.filter(field => field.isActive);
+  };
+
   if (loading) {
     return <LoadingSpinner />;
   }
@@ -243,6 +304,8 @@ const UserSubmission = () => {
       </div>
     );
   }
+
+  const activeSections = getActiveSections();
 
   return (
     <div className="animate-fade-in">
@@ -271,23 +334,23 @@ const UserSubmission = () => {
       >
         <div className="overflow-x-auto pb-2">
           <TabsList className="h-auto p-1 inline-flex flex-nowrap min-w-full">
-            {configuration?.sections.map((section, index) => (
+            {activeSections.map((section, index) => (
               <TabsTrigger 
                 key={section.id} 
                 value={index.toString()}
                 className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
               >
-                {section.name}
+                {section.section.sectionName}
               </TabsTrigger>
             ))}
           </TabsList>
         </div>
 
-        {configuration?.sections.map((section, index) => (
+        {activeSections.map((section, index) => (
           <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
             <Card className="card-elevated">
               <CardHeader>
-                <CardTitle className="text-blue-800">{section.name}</CardTitle>
+                <CardTitle className="text-blue-800">{section.section.sectionName}</CardTitle>
                 <CardDescription>
                   Please provide accurate information for this section
                 </CardDescription>
@@ -295,7 +358,7 @@ const UserSubmission = () => {
               <CardContent>
                 <SectionFieldsList
                   sectionId={section.id}
-                  fields={section.fields}
+                  fields={getActiveFields(section)}
                   formData={formData[section.id] || {}}
                   loadingOptions={loadingOptions}
                   fieldOptions={fieldOptions}
@@ -316,7 +379,7 @@ const UserSubmission = () => {
                     <ChevronLeft className="mr-1 h-4 w-4" /> Previous
                   </Button>
                   
-                  {parseInt(activeSection) === configuration.sections.length - 1 ? (
+                  {parseInt(activeSection) === activeSections.length - 1 ? (
                     <Button 
                       onClick={handleSubmit}
                       disabled={submitting}
@@ -328,7 +391,7 @@ const UserSubmission = () => {
                     <Button
                       onClick={() => {
                         const nextSection = Math.min(
-                          configuration.sections.length - 1,
+                          activeSections.length - 1,
                           parseInt(activeSection) + 1
                         );
                         setActiveSection(nextSection.toString());

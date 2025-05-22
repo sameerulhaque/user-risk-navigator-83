@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { Field } from "@/types/risk";
+import { RiskField, RiskCompanyField } from "@/types/risk";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -8,7 +7,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/
 
 interface SectionFieldsListProps {
   sectionId: number;
-  fields: Field[];
+  fields: RiskCompanyField[];
   formData: Record<number, any>;
   loadingOptions: Record<string, boolean>;
   fieldOptions: Record<string, { id: number; label: string }[]>;
@@ -37,21 +36,24 @@ const SectionFieldsList = ({
         if (!acc[groupIndex]) acc[groupIndex] = [];
         acc[groupIndex].push(field);
         return acc;
-      }, [] as Field[][])
+      }, [] as RiskCompanyField[][])
     : [fields];
 
   // Render a field based on its type
-  const renderField = (field: Field) => {
-    const value = formData[field.id] || "";
+  const renderField = (companyField: RiskCompanyField) => {
+    const field = companyField.field;
+    const fieldId = field.id;
+    const value = formData[fieldId] || "";
     
-    switch (field.type) {
+    switch (field.fieldType) {
       case 'text':
         return (
           <Input
-            id={`field-${sectionId}-${field.id}`}
+            id={`field-${sectionId}-${fieldId}`}
             value={value}
-            onChange={(e) => handleInputChange(sectionId, field.id, e.target.value)}
+            onChange={(e) => handleInputChange(sectionId, fieldId, e.target.value)}
             className="mt-1"
+            placeholder={field.placeholder}
             disabled={submitting}
           />
         );
@@ -59,27 +61,41 @@ const SectionFieldsList = ({
       case 'number':
         return (
           <Input
-            id={`field-${sectionId}-${field.id}`}
+            id={`field-${sectionId}-${fieldId}`}
             type="number"
             value={value}
-            onChange={(e) => handleInputChange(sectionId, field.id, Number(e.target.value))}
+            onChange={(e) => handleInputChange(sectionId, fieldId, Number(e.target.value))}
             className="mt-1"
+            placeholder={field.placeholder}
             disabled={submitting}
           />
         );
         
       case 'select':
-        const options = field.valueApi ? fieldOptions[field.valueApi] || [] : [];
-        const isLoading = field.valueApi ? loadingOptions[field.valueApi] : false;
+        let options: { id: number; label: string }[] = [];
+        
+        // First check if we have predefined value mappings
+        if (field.valueMappings && field.valueMappings.length > 0) {
+          options = field.valueMappings.map(mapping => ({
+            id: mapping.value,
+            label: mapping.text
+          }));
+        } 
+        // Otherwise fetch from endpoint
+        else if (field.endpointURL) {
+          options = fieldOptions[field.endpointURL] || [];
+        }
+        
+        const isLoading = field.endpointURL ? loadingOptions[field.endpointURL] : false;
         
         return (
           <Select
             value={value ? value.toString() : undefined}
-            onValueChange={(val) => handleInputChange(sectionId, field.id, Number(val))}
+            onValueChange={(val) => handleInputChange(sectionId, fieldId, Number(val))}
             disabled={submitting || isLoading}
           >
-            <SelectTrigger id={`field-${sectionId}-${field.id}`} className="mt-1">
-              <SelectValue placeholder={isLoading ? "Loading options..." : "Select an option"} />
+            <SelectTrigger id={`field-${sectionId}-${fieldId}`} className="mt-1">
+              <SelectValue placeholder={isLoading ? "Loading options..." : field.placeholder || "Select an option"} />
             </SelectTrigger>
             <SelectContent>
               {options.map(option => {
@@ -109,21 +125,33 @@ const SectionFieldsList = ({
         return (
           <div className="flex items-center mt-2">
             <input
-              id={`field-${sectionId}-${field.id}`}
+              id={`field-${sectionId}-${fieldId}`}
               type="checkbox"
               checked={value}
-              onChange={(e) => handleInputChange(sectionId, field.id, e.target.checked)}
+              onChange={(e) => handleInputChange(sectionId, fieldId, e.target.checked)}
               className="h-4 w-4 rounded border-gray-300"
               disabled={submitting}
             />
-            <label htmlFor={`field-${sectionId}-${field.id}`} className="ml-2 text-sm">
+            <label htmlFor={`field-${sectionId}-${fieldId}`} className="ml-2 text-sm">
               Yes
             </label>
           </div>
         );
         
+      case 'date':
+        return (
+          <Input
+            id={`field-${sectionId}-${fieldId}`}
+            type="date"
+            value={value}
+            onChange={(e) => handleInputChange(sectionId, fieldId, e.target.value)}
+            className="mt-1"
+            disabled={submitting}
+          />
+        );
+        
       default:
-        return <div>Unsupported field type</div>;
+        return <div>Unsupported field type: {field.fieldType}</div>;
     }
   };
 
@@ -149,15 +177,15 @@ const SectionFieldsList = ({
             </AccordionTrigger>
             <AccordionContent className="px-4 py-2">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {group.map(field => (
-                  <div key={field.id} className="animate-fade-in">
+                {group.map(companyField => (
+                  <div key={companyField.field.id} className="animate-fade-in">
                     <Label 
-                      htmlFor={`field-${sectionId}-${field.id}`} 
+                      htmlFor={`field-${sectionId}-${companyField.field.id}`} 
                       className="mb-1 block"
                     >
-                      {field.name} {field.required && <span className="text-red-500">*</span>}
+                      {companyField.field.label} {companyField.field.isRequired && <span className="text-red-500">*</span>}
                     </Label>
-                    {renderField(field)}
+                    {renderField(companyField)}
                   </div>
                 ))}
               </div>
@@ -170,15 +198,15 @@ const SectionFieldsList = ({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-fade-in">
-      {fields.map(field => (
-        <div key={field.id} className="animate-fade-in">
+      {fields.map(companyField => (
+        <div key={companyField.field.id} className="animate-fade-in">
           <Label 
-            htmlFor={`field-${sectionId}-${field.id}`} 
+            htmlFor={`field-${sectionId}-${companyField.field.id}`} 
             className="mb-1 block"
           >
-            {field.name} {field.required && <span className="text-red-500">*</span>}
+            {companyField.field.label} {companyField.field.isRequired && <span className="text-red-500">*</span>}
           </Label>
-          {renderField(field)}
+          {renderField(companyField)}
         </div>
       ))}
     </div>
