@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -634,7 +633,7 @@ const CompanyConfiguration = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="config-name" className="text-gray-700">Configuration Name</Label>
               <Input
@@ -642,6 +641,20 @@ const CompanyConfiguration = () => {
                 value={configuration.name}
                 onChange={(e) => setConfiguration({ ...configuration, name: e.target.value })}
                 className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
+              />
+            </div>
+            <div>
+              <Label htmlFor="company-id" className="text-gray-700">Company ID</Label>
+              <Input
+                id="company-id"
+                type="number"
+                value={configuration.companyId || ''}
+                onChange={(e) => setConfiguration({ 
+                  ...configuration, 
+                  companyId: e.target.value ? parseInt(e.target.value) : 0 
+                })}
+                className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
+                placeholder="Enter company ID"
               />
             </div>
             <div>

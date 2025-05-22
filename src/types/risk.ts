@@ -130,6 +130,7 @@ export interface RiskScore {
 export interface UserSubmission {
   userId: number;
   configId: number;
+  companyId: number; // Added company ID
   sections: {
     sectionId: number;
     fields: {

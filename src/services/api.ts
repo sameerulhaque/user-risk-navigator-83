@@ -234,13 +234,14 @@ export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 't
 };
 
 // API functions for Risk Configuration
-export const getRiskConfiguration = async (tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
+export const getRiskConfiguration = async (companyId?: number, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
   try {
     // Mock response for the new model structure
     const mockConfig: RiskConfiguration = {
       id: 1,
       name: "Standard Risk Assessment",
       version: "1.0.0",
+      companyId: companyId || 1, // Use provided company ID or default to 1
       companySections: [
         {
           id: 1,

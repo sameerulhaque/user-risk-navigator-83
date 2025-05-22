@@ -5,6 +5,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionFieldsList from "@/components/SectionFieldsList";
@@ -41,16 +43,20 @@ const UserSubmission = () => {
   const [activeSection, setActiveSection] = useState<string>("0");
   const [loadingOptions, setLoadingOptions] = useState<Record<string, boolean>>({});
   const [completionPercentage, setCompletionPercentage] = useState<number>(0);
+  const [companyId, setCompanyId] = useState<string>("");
   
   const userId = 1; // Mock user ID, would come from auth context in a real app
   const navigate = useNavigate();
   const { toast } = useToast();
 
   useEffect(() => {
-    const fetchConfiguration = async () => {
+    // Load configuration based on company ID when it's entered
+    const fetchConfiguration = async (cId: number) => {
+      if (!cId) return;
+      
       setLoading(true);
       try {
-        const response = await getRiskConfiguration();
+        const response = await getRiskConfiguration(cId);
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
@@ -101,8 +107,16 @@ const UserSubmission = () => {
       }
     };
 
-    fetchConfiguration();
-  }, [toast]);
+    // Don't fetch initially, wait for company ID input
+    if (companyId) {
+      fetchConfiguration(parseInt(companyId));
+    } else {
+      // Clear configuration if company ID is cleared
+      setConfiguration(null);
+      setFormData({});
+      setLoading(false);
+    }
+  }, [companyId, toast]);
 
   // Calculate completion percentage whenever formData changes
   useEffect(() => {
@@ -240,6 +254,7 @@ const UserSubmission = () => {
     const submission: UserSubmissionType = {
       userId,
       configId: configuration.id,
+      companyId: configuration.companyId, // Include company ID in submission
       sections: Object.entries(formData).map(([sectionId, fields]) => ({
         sectionId: Number(sectionId),
         fields: Object.entries(fields).map(([fieldId, value]) => ({
@@ -292,122 +307,147 @@ const UserSubmission = () => {
     return section.fields.filter(field => field.isActive);
   };
 
-  if (loading) {
+  if (loading && companyId) {
     return <LoadingSpinner />;
   }
-
-  if (!configuration) {
-    return (
-      <div className="text-center py-8">
-        <h3 className="text-xl font-medium mb-2">No Form Configuration Found</h3>
-        <p className="text-muted-foreground">Please try again later.</p>
-      </div>
-    );
-  }
-
-  const activeSections = getActiveSections();
 
   return (
     <div className="animate-fade-in">
       <PageHeader
         title="Risk Assessment Form"
-        description="Please complete all sections to receive your risk assessment"
+        description="Please enter company ID and complete all sections to receive your risk assessment"
       />
 
+      {/* Company ID Input */}
       <Card className="mb-6 card-elevated">
         <CardContent className="pt-6">
-          <div className="flex items-center gap-4">
-            <div className="flex-1">
-              <Progress value={completionPercentage} className="h-2" />
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <Label htmlFor="company-id-input">Company ID</Label>
+              <div className="flex mt-1">
+                <Input
+                  id="company-id-input"
+                  type="number"
+                  placeholder="Enter company ID"
+                  value={companyId}
+                  onChange={(e) => setCompanyId(e.target.value)}
+                  className="mr-2"
+                />
+                <Button 
+                  onClick={() => setCompanyId(companyId)} 
+                  disabled={!companyId || submitting}
+                >
+                  Load
+                </Button>
+              </div>
             </div>
-            <div className="text-sm font-medium text-blue-700">
-              {completionPercentage}% Complete
-            </div>
+            
+            {configuration && (
+              <div className="md:col-span-2">
+                <div className="flex items-center gap-4 h-full">
+                  <div className="flex-1">
+                    <Progress value={completionPercentage} className="h-2" />
+                  </div>
+                  <div className="text-sm font-medium text-blue-700">
+                    {completionPercentage}% Complete
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
 
-      <Tabs
-        value={activeSection}
-        onValueChange={setActiveSection}
-        className="space-y-4"
-      >
-        <div className="overflow-x-auto pb-2">
-          <TabsList className="h-auto p-1 inline-flex flex-nowrap min-w-full">
-            {activeSections.map((section, index) => (
-              <TabsTrigger 
-                key={section.id} 
-                value={index.toString()}
-                className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
-              >
-                {section.section.sectionName}
-              </TabsTrigger>
-            ))}
-          </TabsList>
+      {!configuration && !loading && (
+        <div className="text-center py-8">
+          <h3 className="text-xl font-medium mb-2">Please Enter Company ID</h3>
+          <p className="text-muted-foreground">Enter a company ID to load the risk assessment form.</p>
         </div>
+      )}
 
-        {activeSections.map((section, index) => (
-          <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
-            <Card className="card-elevated">
-              <CardHeader>
-                <CardTitle className="text-blue-800">{section.section.sectionName}</CardTitle>
-                <CardDescription>
-                  Please provide accurate information for this section
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <SectionFieldsList
-                  sectionId={section.id}
-                  fields={getActiveFields(section)}
-                  formData={formData[section.id] || {}}
-                  loadingOptions={loadingOptions}
-                  fieldOptions={fieldOptions}
-                  submitting={submitting}
-                  handleInputChange={handleInputChange}
-                />
+      {configuration && (
+        <Tabs
+          value={activeSection}
+          onValueChange={setActiveSection}
+          className="space-y-4"
+        >
+          <div className="overflow-x-auto pb-2">
+            <TabsList className="h-auto p-1 inline-flex flex-nowrap min-w-full">
+              {getActiveSections().map((section, index) => (
+                <TabsTrigger 
+                  key={section.id} 
+                  value={index.toString()}
+                  className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                >
+                  {section.section.sectionName}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+          </div>
 
-                <div className="flex justify-between mt-8">
-                  <Button
-                    variant="outline"
-                    onClick={() => {
-                      const prevSection = Math.max(0, parseInt(activeSection) - 1);
-                      setActiveSection(prevSection.toString());
-                    }}
-                    disabled={parseInt(activeSection) === 0 || submitting}
-                    className="border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                  >
-                    <ChevronLeft className="mr-1 h-4 w-4" /> Previous
-                  </Button>
-                  
-                  {parseInt(activeSection) === activeSections.length - 1 ? (
-                    <Button 
-                      onClick={handleSubmit}
-                      disabled={submitting}
-                      className="bg-blue-600 hover:bg-blue-700 transition-colors"
-                    >
-                      {submitting ? "Submitting..." : "Submit Application"}
-                    </Button>
-                  ) : (
+          {getActiveSections().map((section, index) => (
+            <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
+              <Card className="card-elevated">
+                <CardHeader>
+                  <CardTitle className="text-blue-800">{section.section.sectionName}</CardTitle>
+                  <CardDescription>
+                    Please provide accurate information for this section
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <SectionFieldsList
+                    sectionId={section.id}
+                    fields={getActiveFields(section)}
+                    formData={formData[section.id] || {}}
+                    loadingOptions={loadingOptions}
+                    fieldOptions={fieldOptions}
+                    submitting={submitting}
+                    handleInputChange={handleInputChange}
+                  />
+
+                  <div className="flex justify-between mt-8">
                     <Button
+                      variant="outline"
                       onClick={() => {
-                        const nextSection = Math.min(
-                          activeSections.length - 1,
-                          parseInt(activeSection) + 1
-                        );
-                        setActiveSection(nextSection.toString());
+                        const prevSection = Math.max(0, parseInt(activeSection) - 1);
+                        setActiveSection(prevSection.toString());
                       }}
-                      disabled={submitting}
-                      className="bg-blue-600 hover:bg-blue-700 transition-colors"
+                      disabled={parseInt(activeSection) === 0 || submitting}
+                      className="border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
                     >
-                      Next <ChevronRight className="ml-1 h-4 w-4" />
+                      <ChevronLeft className="mr-1 h-4 w-4" /> Previous
                     </Button>
-                  )}
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
-        ))}
-      </Tabs>
+                    
+                    {parseInt(activeSection) === getActiveSections().length - 1 ? (
+                      <Button 
+                        onClick={handleSubmit}
+                        disabled={submitting}
+                        className="bg-blue-600 hover:bg-blue-700 transition-colors"
+                      >
+                        {submitting ? "Submitting..." : "Submit Application"}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          const nextSection = Math.min(
+                            getActiveSections().length - 1,
+                            parseInt(activeSection) + 1
+                          );
+                          setActiveSection(nextSection.toString());
+                        }}
+                        disabled={submitting}
+                        className="bg-blue-600 hover:bg-blue-700 transition-colors"
+                      >
+                        Next <ChevronRight className="ml-1 h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </TabsContent>
+          ))}
+        </Tabs>
+      )}
     </div>
   );
 };
