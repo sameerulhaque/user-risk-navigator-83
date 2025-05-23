@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +10,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
+import { AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionFieldsList from "@/components/SectionFieldsList";
@@ -53,6 +54,7 @@ const UserSubmission = () => {
   const [companyId, setCompanyId] = useState<string>("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState<boolean>(true);
+  const [errorFetchingCompanies, setErrorFetchingCompanies] = useState<boolean>(false);
   const [submissionSuccess, setSubmissionSuccess] = useState<boolean>(false);
   
   const userId = 1; // Mock user ID, would come from auth context in a real app
@@ -60,40 +62,44 @@ const UserSubmission = () => {
   const { toast } = useToast();
 
   // Fetch available companies for dropdown
-  useEffect(() => {
-    const fetchCompanies = async () => {
-      setLoadingCompanies(true);
-      try {
-        console.log("Fetching companies...");
-        const response = await getCompanies();
-        console.log("Company response:", response);
-        if (response.isSuccess && response.value) {
-          setCompanies(response.value);
-          // Auto-select the first company if available
-          if (response.value.length > 0) {
-            setCompanyId(response.value[0].id.toString());
-            console.log("Auto-selected company ID:", response.value[0].id.toString());
-          }
-        } else {
-          console.error("Failed to fetch companies:", response);
-          toast({
-            title: "Error",
-            description: "Failed to fetch available companies",
-            variant: "destructive"
-          });
-        }
-      } catch (error) {
-        console.error('Failed to fetch companies:', error);
+  const fetchCompanies = async () => {
+    setLoadingCompanies(true);
+    setErrorFetchingCompanies(false);
+    
+    try {
+      console.log("Fetching companies...");
+      const response = await getCompanies();
+      console.log("Company response:", response);
+      
+      if (response.isSuccess && response.value && response.value.length > 0) {
+        setCompanies(response.value);
+        // Auto-select the first company if available
+        setCompanyId(response.value[0].id.toString());
+        console.log("Auto-selected company ID:", response.value[0].id.toString());
+      } else {
+        console.error("No companies returned or unsuccessful response:", response);
+        setErrorFetchingCompanies(true);
         toast({
-          title: "Error",
-          description: "Failed to fetch available companies",
+          title: "Warning",
+          description: "No companies available. Using mock data.",
           variant: "destructive"
         });
-      } finally {
-        setLoadingCompanies(false);
       }
-    };
+    } catch (error) {
+      console.error('Failed to fetch companies:', error);
+      setErrorFetchingCompanies(true);
+      toast({
+        title: "Error",
+        description: "Failed to fetch companies. Using mock data if available.",
+        variant: "destructive"
+      });
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
 
+  // Initial company fetch
+  useEffect(() => {
     fetchCompanies();
   }, [toast]);
 
@@ -104,7 +110,10 @@ const UserSubmission = () => {
       
       setLoading(true);
       try {
+        console.log(`Fetching configuration for company ID: ${cId}`);
         const response = await getRiskConfiguration(cId);
+        console.log("Configuration response:", response);
+        
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
@@ -139,6 +148,7 @@ const UserSubmission = () => {
           // Load options for all dropdown fields
           await loadAllDropdownOptions(response.value);
         } else {
+          console.error("Failed to load configuration or empty response:", response);
           toast({
             title: "Error",
             description: "Failed to load form configuration",
@@ -146,7 +156,7 @@ const UserSubmission = () => {
           });
         }
       } catch (error) {
-        console.error(error);
+        console.error("Error fetching configuration:", error);
         toast({
           title: "Error",
           description: "An error occurred while fetching configuration",
@@ -316,8 +326,11 @@ const UserSubmission = () => {
     
     setSubmitting(true);
     try {
+      console.log("Submitting user data:", submission);
       // First try the API call
       const response = await submitUserData(submission);
+      console.log("Submission response:", response);
+      
       if (response.isSuccess) {
         setSubmissionSuccess(true);
         
@@ -339,7 +352,7 @@ const UserSubmission = () => {
         });
       }
     } catch (error) {
-      console.error(error);
+      console.error("Error submitting user data:", error);
       toast({
         title: "Error",
         description: "An error occurred during submission",
@@ -379,36 +392,61 @@ const UserSubmission = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <Label htmlFor="company-select">Select Company</Label>
-              {loadingCompanies ? (
-                <div className="flex items-center mt-2">
-                  <LoadingSpinner size="sm" />
-                  <span className="ml-2">Loading companies...</span>
-                </div>
-              ) : (
-                <Select
-                  value={companyId}
-                  onValueChange={(value) => setCompanyId(value)}
-                  disabled={submitting}
-                >
-                  <SelectTrigger id="company-select" className="mt-1">
-                    <SelectValue placeholder="Select a company" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectGroup>
-                      {companies && companies.length > 0 ? (
-                        companies.map((company) => (
-                          <SelectItem key={company.id} value={company.id.toString()}>
-                            {company.name}
-                          </SelectItem>
-                        ))
-                      ) : (
-                        <SelectItem value="no-options" disabled>
-                          No companies available
-                        </SelectItem>
-                      )}
-                    </SelectGroup>
-                  </SelectContent>
-                </Select>
+              <div className="flex items-center gap-2">
+                {loadingCompanies ? (
+                  <div className="flex items-center mt-2">
+                    <LoadingSpinner size="sm" />
+                    <span className="ml-2">Loading companies...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Select
+                      value={companyId}
+                      onValueChange={(value) => setCompanyId(value)}
+                      disabled={submitting}
+                    >
+                      <SelectTrigger id="company-select" className="mt-1 flex-1">
+                        <SelectValue placeholder="Select a company" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectGroup>
+                          {companies && companies.length > 0 ? (
+                            companies.map((company) => (
+                              <SelectItem key={company.id} value={company.id.toString()}>
+                                {company.name}
+                              </SelectItem>
+                            ))
+                          ) : (
+                            <SelectItem value="no-options" disabled>
+                              No companies available
+                            </SelectItem>
+                          )}
+                        </SelectGroup>
+                      </SelectContent>
+                    </Select>
+                    <Button 
+                      variant="outline" 
+                      size="icon"
+                      onClick={fetchCompanies}
+                      disabled={loadingCompanies || submitting}
+                      title="Refresh companies"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              
+              {errorFetchingCompanies && (
+                <Alert className="mt-2 bg-amber-50 border-amber-200">
+                  <AlertTriangle className="h-4 w-4 text-amber-600" />
+                  <AlertTitle className="text-amber-800 text-sm">
+                    Problem loading companies
+                  </AlertTitle>
+                  <AlertDescription className="text-amber-700 text-xs">
+                    There was an issue fetching companies. Using mock data if available.
+                  </AlertDescription>
+                </Alert>
               )}
             </div>
             

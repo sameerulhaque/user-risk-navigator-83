@@ -96,6 +96,9 @@ export const getDefaultSections = async (tenantId: string = 'tenant1'): Promise<
     const response = await api.get<ApiResponse<RiskSection[]>>('/risk/sections', {
       headers: getDefaultHeaders(tenantId)
     });
+    if (!response.data?.isSuccess) {
+      throw new Error('API returned unsuccessful response');
+    }
     return response.data;
   } catch (error) {
     console.log('Falling back to mock sections:', error);
@@ -111,6 +114,9 @@ export const getDefaultFields = async (sectionId: number, tenantId: string = 'te
     const response = await api.get<ApiResponse<RiskField[]>>(`/risk/sections/${sectionId}/fields`, {
       headers: getDefaultHeaders(tenantId)
     });
+    if (!response.data?.isSuccess) {
+      throw new Error('API returned unsuccessful response');
+    }
     return response.data;
   } catch (error) {
     console.log('Falling back to mock fields:', error);
@@ -127,6 +133,9 @@ export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 't
     const response = await api.get<ApiResponse<{ id: number; label: string }[]>>(apiEndpoint, {
       headers: getDefaultHeaders(tenantId)
     });
+    if (!response.data?.isSuccess) {
+      throw new Error('API returned unsuccessful response');
+    }
     return response.data;
   } catch (error) {
     console.log(`Falling back to mock options for ${apiEndpoint}:`, error);
@@ -143,9 +152,18 @@ export const getCompanies = async (tenantId: string = 'tenant1'): Promise<ApiRes
     const response = await api.get<ApiResponse<Company[]>>('/risk/companies', {
       headers: getDefaultHeaders(tenantId)
     });
+    
+    // Check if response is successful and has a value
+    if (!response.data?.isSuccess || !response.data.value) {
+      throw new Error('API returned unsuccessful response or no data');
+    }
+    
     return response.data;
   } catch (error) {
     console.log('Falling back to mock companies:', error);
+    // Force a throw to verify fallback works
+    console.log('Using mock company data:', mockCompanies);
+    
     // Ensure we're returning the mock company data
     return successResponse(mockCompanies);
   }
@@ -161,6 +179,9 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
     const response = await api.get<ApiResponse<RiskConfiguration>>(`/risk/configuration/company/${companyIdNumber}`, {
       headers: getDefaultHeaders(tenantId)
     });
+    if (!response.data?.isSuccess) {
+      throw new Error('API returned unsuccessful response');
+    }
     return response.data;
   } catch (error) {
     console.log('Falling back to mock configuration:', error);
@@ -406,6 +427,19 @@ export const getUserProfiles = async (
   tenantId: string = 'tenant1'
 ): Promise<ApiResponse<PaginatedResponse<UserProfile>>> => {
   try {
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<PaginatedResponse<UserProfile>>>('/risk/profiles', {
+      headers: getPaginationHeaders(page, pageSize, searchQuery),
+    });
+    
+    if (!response.data?.isSuccess) {
+      throw new Error('API returned unsuccessful response');
+    }
+    
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock user profiles:', error);
+    
     // Mock response with filtering
     let filteredUsers = [...mockUsers] as UserProfile[];
     
@@ -433,15 +467,6 @@ export const getUserProfiles = async (
     const paginatedUsers = filteredUsers.slice(start, end);
     
     return paginatedSuccessResponse<UserProfile>(paginatedUsers, page, pageSize, filteredUsers.length);
-  } catch (error) {
-    console.error('Failed to fetch user profiles:', error);
-    return {
-      isSuccess: false,
-      errors: ['Failed to fetch user profiles.'],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
   }
 };
 
@@ -544,6 +569,11 @@ export const getVersionHistory = async (
       headers: getDefaultHeaders(tenantId),
       params
     });
+    
+    if (!response.data?.isSuccess) {
+      throw new Error('API returned unsuccessful response');
+    }
+    
     return response.data;
   } catch (error) {
     console.log('Falling back to mock version history:', error);
@@ -559,6 +589,7 @@ export const getVersionHistory = async (
       filteredHistory = filteredHistory.filter(h => h.entityId === entityId);
     }
     
+    console.log('Using mock version history data:', filteredHistory);
     return successResponse(filteredHistory);
   }
 };
