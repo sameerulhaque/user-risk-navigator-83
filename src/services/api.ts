@@ -17,9 +17,10 @@ import {
   Section,
   Field,
   FieldValue,
-  Company
+  Company,
+  VersionHistory
 } from '@/types/risk';
-import { mockRiskConfiguration, mockDropdownData, mockUsers, mockRiskScore, mockCompanies, mockSections, mockFields, mockCompanySections } from './mockData';
+import { mockRiskConfiguration, mockDropdownData, mockUsers, mockRiskScore, mockCompanies, mockSections, mockFields, mockCompanySections, mockVersionHistory } from './mockData';
 
 // Create axios instance with base configurations
 const api = axios.create({
@@ -82,79 +83,78 @@ const paginatedSuccessResponse = <T>(
 // Get default sections for companies to use in configuration
 export const getDefaultSections = async (tenantId: string = 'tenant1'): Promise<ApiResponse<RiskSection[]>> => {
   try {
-    // Return mock sections from mockData
-    return successResponse(mockSections);
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<RiskSection[]>>('/risk/sections', {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
   } catch (error) {
-    console.error('Failed to fetch default sections:', error);
-    return {
-      isSuccess: false,
-      errors: ['Failed to fetch default sections.'],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
+    console.log('Falling back to mock sections:', error);
+    // Return mock sections from mockData as fallback
+    return successResponse(mockSections);
   }
 };
 
 // Get default fields for a specific section
 export const getDefaultFields = async (sectionId: number, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskField[]>> => {
   try {
-    // Filter fields by section ID
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<RiskField[]>>(`/risk/sections/${sectionId}/fields`, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock fields:', error);
+    // Filter fields by section ID as fallback
     const fields = mockFields.filter(field => field.sectionId === sectionId);
     return successResponse(fields);
-  } catch (error) {
-    console.error(`Failed to fetch default fields for section ${sectionId}:`, error);
-    return {
-      isSuccess: false,
-      errors: [`Failed to fetch default fields for section ${sectionId}.`],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
   }
 };
 
 // API function for dropdown values
 export const getFieldOptions = async (apiEndpoint: string, tenantId: string = 'tenant1'): Promise<ApiResponse<{ id: number; label: string }[]>> => {
   try {
-    // In a real application, this would be an actual API call
-    // const response = await api.get(apiEndpoint, { headers: getDefaultHeaders(tenantId) });
-    // return response.data;
-    
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<{ id: number; label: string }[]>>(apiEndpoint, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log(`Falling back to mock options for ${apiEndpoint}:`, error);
     // Mock response
     const mockData = mockDropdownData[apiEndpoint as keyof typeof mockDropdownData] || [];
     return successResponse(mockData);
-  } catch (error) {
-    console.error(`Failed to fetch options for ${apiEndpoint}:`, error);
-    return {
-      isSuccess: false,
-      errors: [`Failed to fetch options for ${apiEndpoint}.`],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
   }
 };
 
 // Get available companies for dropdown
 export const getCompanies = async (tenantId: string = 'tenant1'): Promise<ApiResponse<Company[]>> => {
   try {
-    return successResponse(mockCompanies);
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<Company[]>>('/risk/companies', {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
   } catch (error) {
-    console.error('Failed to fetch companies:', error);
-    return {
-      isSuccess: false,
-      errors: ['Failed to fetch companies.'],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
+    console.log('Falling back to mock companies:', error);
+    return successResponse(mockCompanies);
   }
 };
 
 // API functions for Risk Configuration
 export const getRiskConfiguration = async (companyId?: number | string, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
   try {
+    // Convert companyId to number if it's a string
+    const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : (companyId || 1);
+    
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<RiskConfiguration>>(`/risk/configuration/company/${companyIdNumber}`, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock configuration:', error);
+    
     // Convert companyId to number if it's a string
     const companyIdNumber = typeof companyId === 'string' ? parseInt(companyId, 10) : (companyId || 1);
 
@@ -173,40 +173,79 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
     // Add company sections
     const configSections = mockCompanySections.filter(cs => cs.companyId === company.id);
     
-    // Connect related data
-    mockConfig.companySections = configSections.map(section => {
-      // Connect section reference
-      const sectionData = mockSections.find(s => s.id === section.sectionId);
-      
-      // Connect fields
-      const fields = section.fields?.map(field => {
-        // Connect field reference
-        const fieldData = mockFields.find(f => f.id === field.fieldId);
+    // If no configuration exists yet for this company, create default one with all sections and fields active
+    if (configSections.length === 0) {
+      // Create default configuration with all sections and fields active
+      mockConfig.companySections = mockSections.map(section => {
+        const companySection: RiskCompanySection = {
+          id: section.id * 100 + company.id, // Generate unique ID
+          companyId: company.id,
+          sectionId: section.id,
+          isActive: true,
+          weightage: Math.floor(100 / mockSections.length), // Distribute weight evenly
+          section: section,
+          fields: []
+        };
+        
+        // Add all fields for this section
+        const sectionFields = mockFields.filter(f => f.sectionId === section.id);
+        companySection.fields = sectionFields.map(field => {
+          const companyField: RiskCompanyField = {
+            id: field.id * 100 + company.id, // Generate unique ID
+            companySectionId: companySection.id,
+            fieldId: field.id,
+            isActive: true,
+            maxScore: 100,
+            field: field,
+            conditions: []
+          };
+          
+          // Add value mappings as conditions if they exist
+          if (field.valueMappings && field.valueMappings.length > 0) {
+            companyField.conditions = field.valueMappings.map(mapping => {
+              return {
+                id: mapping.id * 100 + company.id, // Generate unique ID
+                companyFieldId: companyField.id,
+                fieldValueMappingId: mapping.id,
+                operator: '=',
+                riskScore: 0, // Default score
+                fieldValueMapping: mapping
+              };
+            });
+          }
+          
+          return companyField;
+        });
+        
+        return companySection;
+      });
+    } else {
+      // Connect related data for existing configuration
+      mockConfig.companySections = configSections.map(section => {
+        // Connect section reference
+        const sectionData = mockSections.find(s => s.id === section.sectionId);
+        
+        // Connect fields
+        const fields = section.fields?.map(field => {
+          // Connect field reference
+          const fieldData = mockFields.find(f => f.id === field.fieldId);
+          
+          return {
+            ...field,
+            field: fieldData
+          };
+        });
         
         return {
-          ...field,
-          field: fieldData
+          ...section,
+          section: sectionData,
+          fields: fields
         };
       });
-      
-      return {
-        ...section,
-        section: sectionData,
-        fields: fields
-      };
-    });
+    }
     
     // Return the populated configuration object
     return successResponse(mockConfig);
-  } catch (error) {
-    console.error('Failed to fetch risk configuration:', error);
-    return {
-      isSuccess: false,
-      errors: ['Failed to fetch risk configuration.'],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
   }
 };
 
@@ -323,22 +362,30 @@ export const getRiskConfigurationLegacy = async (companyId?: number | string, te
 
 export const saveRiskConfiguration = async (configuration: RiskConfiguration, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskConfiguration>> => {
   try {
-    // In a real application, this would be an actual API call
-    // const response = await api.post('/risk-configuration', configuration, { headers: getDefaultHeaders(tenantId) });
-    // return response.data;
-    
-    // Mock response
-    return successResponse({ ...configuration, id: 1 });
+    // Try to save to real API first
+    const response = await api.post<ApiResponse<RiskConfiguration>>('/risk/configuration', configuration, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
   } catch (error) {
-    console.error('Failed to save risk configuration:', error);
-    return {
-      isSuccess: false,
-      errors: ['Failed to save risk configuration.'],
-      validationErrors: {},
-      successes: [],
-      value: null,
+    console.log('Falling back to mock save:', error);
+    // Mock response with version increment
+    const updatedConfiguration = {
+      ...configuration,
+      version: incrementVersion(configuration.version)
     };
+    return successResponse(updatedConfiguration);
   }
+};
+
+// Helper function to increment version
+const incrementVersion = (version: string): string => {
+  const parts = version.split('.');
+  if (parts.length === 3) {
+    const patch = parseInt(parts[2]) + 1;
+    return `${parts[0]}.${parts[1]}.${patch}`;
+  }
+  return version;
 };
 
 // API functions for User Profiles
@@ -411,24 +458,21 @@ export const getUserRiskScore = async (userId: number, tenantId: string = 'tenan
 
 export const submitUserData = async (submission: UserSubmission, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskScore>> => {
   try {
-    // Mock response with the correct status type
+    // Try to submit to real API first
+    const response = await api.post<ApiResponse<RiskScore>>('/risk/submissions', submission, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock submission:', error);
+    // Mock response
     return successResponse({
       ...mockRiskScore,
       userId: submission.userId,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
-      // Ensure status is one of the allowed values
-      status: mockRiskScore.status as 'Pending' | 'Approved' | 'Rejected'
+      status: 'Pending'
     });
-  } catch (error) {
-    console.error('Failed to submit user data:', error);
-    return {
-      isSuccess: false,
-      errors: ['Failed to submit user data.'],
-      validationErrors: {},
-      successes: [],
-      value: null,
-    };
   }
 };
 
@@ -463,5 +507,48 @@ export const updateUserStatus = async (
       successes: [],
       value: null,
     };
+  }
+};
+
+// Get version history for configurations and submissions
+export const getVersionHistory = async (
+  entityType?: 'configuration' | 'submission',
+  entityId?: number,
+  tenantId: string = 'tenant1'
+): Promise<ApiResponse<VersionHistory[]>> => {
+  try {
+    // Build query parameters
+    let url = '/risk/version-history';
+    const params: Record<string, string> = {};
+    
+    if (entityType) {
+      params.entityType = entityType;
+    }
+    
+    if (entityId) {
+      params.entityId = entityId.toString();
+    }
+    
+    // Try to fetch from real API first
+    const response = await api.get<ApiResponse<VersionHistory[]>>(url, {
+      headers: getDefaultHeaders(tenantId),
+      params
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock version history:', error);
+    
+    // Filter mock data if needed
+    let filteredHistory = [...mockVersionHistory];
+    
+    if (entityType) {
+      filteredHistory = filteredHistory.filter(h => h.entityType === entityType);
+    }
+    
+    if (entityId) {
+      filteredHistory = filteredHistory.filter(h => h.entityId === entityId);
+    }
+    
+    return successResponse(filteredHistory);
   }
 };

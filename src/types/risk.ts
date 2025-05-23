@@ -104,6 +104,10 @@ export interface RiskUserAssessment {
   userId: number;
   configId: number;
   sections: RiskUserAssessmentSection[];
+  // Added properties to fix errors in riskCalculator.ts
+  sectionScores?: RiskUserAssessmentSectionScore[];
+  totalScore?: number;
+  status?: RiskStatus;
 }
 
 // User profile
@@ -181,4 +185,16 @@ export interface RiskConfiguration_Legacy {
   name: string;
   version: string;
   sections: Section[];
+}
+
+// Version history interface
+export interface VersionHistory {
+  id: number;
+  entityType: 'configuration' | 'submission';
+  entityId: number;
+  version: string;
+  timestamp: string;
+  changes: string;
+  userId: number;
+  userName: string;
 }

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -6,13 +7,15 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Alert, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertTriangle, Plus, Save, Trash2, CheckCircle2 } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
-import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions, getCompanies } from "@/services/api";
+import { getRiskConfiguration, saveRiskConfiguration, getFieldOptions, getCompanies, getDefaultFields, getDefaultSections } from "@/services/api";
 import { 
   RiskConfiguration, 
   RiskCompanySection, 
@@ -37,7 +40,8 @@ const needsTwoConditionInputs = (type: string): boolean => {
 
 const CompanyConfiguration = () => {
   const [configuration, setConfiguration] = useState<RiskConfiguration | null>(null);
-  const [companySections, setCompanySections] = useState<RiskCompanySection[]>([]);
+  const [defaultSections, setDefaultSections] = useState<RiskSection[]>([]);
+  const [defaultFields, setDefaultFields] = useState<Record<number, RiskField[]>>({});
   const [loading, setLoading] = useState<boolean>(true);
   const [activeSection, setActiveSection] = useState<string>("0");
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -46,6 +50,14 @@ const CompanyConfiguration = () => {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [selectedCompanyId, setSelectedCompanyId] = useState<string>("");
   const [loadingCompanies, setLoadingCompanies] = useState<boolean>(true);
+  const [showAddValueDialog, setShowAddValueDialog] = useState<boolean>(false);
+  const [newValueData, setNewValueData] = useState<{sectionId: number; fieldId: number; text: string; value: number}>({
+    sectionId: 0,
+    fieldId: 0,
+    text: "",
+    value: 0
+  });
+  const [saveSuccess, setSaveSuccess] = useState<boolean>(false);
   const { toast } = useToast();
   
   // Load companies for dropdown
@@ -76,10 +88,39 @@ const CompanyConfiguration = () => {
     fetchCompanies();
   }, [toast]);
 
+  // Load default sections and fields
+  useEffect(() => {
+    const fetchDefaultSectionsAndFields = async () => {
+      try {
+        // Get default sections
+        const sectionsResponse = await getDefaultSections();
+        if (sectionsResponse.isSuccess && sectionsResponse.value) {
+          setDefaultSections(sectionsResponse.value);
+          
+          // Get default fields for each section
+          const fieldsObj: Record<number, RiskField[]> = {};
+          for (const section of sectionsResponse.value) {
+            const fieldsResponse = await getDefaultFields(section.id);
+            if (fieldsResponse.isSuccess && fieldsResponse.value) {
+              fieldsObj[section.id] = fieldsResponse.value;
+            }
+          }
+          setDefaultFields(fieldsObj);
+        }
+      } catch (error) {
+        console.error('Failed to fetch default sections and fields:', error);
+      }
+    };
+    
+    fetchDefaultSectionsAndFields();
+  }, []);
+
   // Calculate the total weight of all sections
   const calculateTotalWeight = (): number => {
     if (!configuration?.companySections) return 0;
-    return configuration.companySections.reduce((total, section) => total + section.weightage, 0);
+    return configuration.companySections
+      .filter(section => section.isActive)
+      .reduce((total, section) => total + section.weightage, 0);
   };
 
   // Check if weights are valid (sum to 100%)
@@ -141,9 +182,9 @@ const CompanyConfiguration = () => {
         setFieldOptionsMap(prev => ({ ...prev, [apiEndpoint]: response.value }));
       } else {
         toast({
-          title: "Error",
-          description: `Failed to load options for ${apiEndpoint}`,
-          variant: "destructive"
+          title: "Warning",
+          description: `No options available for ${apiEndpoint}`,
+          variant: "default"
         });
       }
     } catch (error) {
@@ -186,6 +227,14 @@ const CompanyConfiguration = () => {
       }
 
       if (response.isSuccess) {
+        // Update configuration with the response (might have updated version)
+        if (response.value) {
+          setConfiguration(response.value);
+        }
+        
+        setSaveSuccess(true);
+        setTimeout(() => setSaveSuccess(false), 3000);
+        
         toast({
           title: "Success",
           description: "Risk configuration saved successfully",
@@ -215,6 +264,45 @@ const CompanyConfiguration = () => {
     const updatedSections = configuration.companySections.map(section => {
       if (section.id === sectionId) {
         return { ...section, weightage };
+      }
+      return section;
+    });
+
+    setConfiguration({
+      ...configuration,
+      companySections: updatedSections,
+    });
+  };
+
+  const updateSectionActive = (sectionId: number, isActive: boolean) => {
+    if (!configuration || !configuration.companySections) return;
+    
+    const updatedSections = configuration.companySections.map(section => {
+      if (section.id === sectionId) {
+        return { ...section, isActive };
+      }
+      return section;
+    });
+
+    setConfiguration({
+      ...configuration,
+      companySections: updatedSections,
+    });
+  };
+
+  const updateFieldActive = (sectionId: number, fieldId: number, isActive: boolean) => {
+    if (!configuration || !configuration.companySections) return;
+    
+    const updatedSections = configuration.companySections.map(section => {
+      if (section.id === sectionId) {
+        const updatedFields = section.fields?.map(field => {
+          if (field.id === fieldId) {
+            return { ...field, isActive };
+          }
+          return field;
+        });
+        
+        return { ...section, fields: updatedFields };
       }
       return section;
     });
@@ -373,6 +461,116 @@ const CompanyConfiguration = () => {
     });
   };
 
+  const openAddValueDialog = (sectionId: number, fieldId: number) => {
+    setNewValueData({
+      sectionId,
+      fieldId,
+      text: "",
+      value: 0
+    });
+    setShowAddValueDialog(true);
+  };
+
+  const addNewFieldValue = () => {
+    if (!configuration || !configuration.companySections || !newValueData.text) {
+      toast({
+        title: "Error",
+        description: "Please enter a value text",
+        variant: "destructive"
+      });
+      return;
+    }
+    
+    const { sectionId, fieldId, text, value } = newValueData;
+    
+    // Find the section and field
+    const sectionIndex = configuration.companySections.findIndex(s => s.id === sectionId);
+    if (sectionIndex === -1) return;
+    
+    const section = configuration.companySections[sectionIndex];
+    if (!section.fields) return;
+    
+    const fieldIndex = section.fields.findIndex(f => f.id === fieldId);
+    if (fieldIndex === -1) return;
+    
+    const field = section.fields[fieldIndex];
+    
+    // Create new unique ID
+    const newId = Date.now();
+    
+    // Create new value mapping
+    const newValueMapping: RiskFieldValueMapping = {
+      id: newId,
+      fieldId: field.field?.id || 0,
+      text,
+      value
+    };
+    
+    // Create new condition
+    const newCondition: RiskCompanyFieldCondition = {
+      id: newId,
+      companyFieldId: fieldId,
+      fieldValueMappingId: newId,
+      operator: '=',
+      riskScore: 0,
+      fieldValueMapping: newValueMapping
+    };
+    
+    // Add to the field's conditions
+    const updatedSections = [...configuration.companySections];
+    if (!updatedSections[sectionIndex].fields[fieldIndex].conditions) {
+      updatedSections[sectionIndex].fields[fieldIndex].conditions = [];
+    }
+    
+    updatedSections[sectionIndex].fields[fieldIndex].conditions.push(newCondition);
+    
+    // Update configuration
+    setConfiguration({
+      ...configuration,
+      companySections: updatedSections
+    });
+    
+    // Close dialog
+    setShowAddValueDialog(false);
+    
+    // Show toast
+    toast({
+      title: "Success",
+      description: `Added new value "${text}" to the field`,
+    });
+  };
+
+  const removeFieldValue = (sectionId: number, fieldId: number, valueId: number) => {
+    if (!configuration || !configuration.companySections) return;
+    
+    const updatedSections = configuration.companySections.map(section => {
+      if (section.id === sectionId) {
+        const updatedFields = section.fields?.map(field => {
+          if (field.id === fieldId && field.conditions) {
+            return {
+              ...field,
+              conditions: field.conditions.filter(condition => condition.id !== valueId)
+            };
+          }
+          return field;
+        });
+        
+        return { ...section, fields: updatedFields };
+      }
+      return section;
+    });
+
+    setConfiguration({
+      ...configuration,
+      companySections: updatedSections,
+    });
+    
+    toast({
+      title: "Success",
+      description: "Field value removed",
+    });
+  };
+
   // Render field value configuration (condition)
   const renderFieldValue = (condition: RiskCompanyFieldCondition, field: RiskCompanyField, section: RiskCompanySection) => {
     // Determine condition type from operator for display
@@ -389,7 +587,15 @@ const CompanyConfiguration = () => {
     const fieldValue = condition.fieldValueMapping?.text || "Custom condition";
 
     return (
-      <div key={condition.id} className="border border-gray-200 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow">
+      <div key={condition.id} className="border border-gray-200 rounded-md p-4 mb-4 bg-white hover:shadow-md transition-shadow relative">
+        <button 
+          className="absolute top-2 right-2 text-gray-500 hover:text-red-600 p-1 rounded-full hover:bg-red-50 transition-colors"
+          onClick={() => removeFieldValue(section.id, field.id, condition.id)}
+          title="Remove value"
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+        
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
           <div>
             <Label className="text-gray-700 font-medium">Field Value</Label>
@@ -503,9 +709,18 @@ const CompanyConfiguration = () => {
       return null;
     }
     
+    // Skip fields with no endpoint if they don't have value mappings
+    const hasEndpoint = !!field.field.endpointURL;
+    const hasValueMappings = (field.field.valueMappings && field.field.valueMappings.length > 0);
+    const hasConditions = (field.conditions && field.conditions.length > 0);
+    
+    // Only show fields with endpoint or value mappings or conditions
+    // if (!hasEndpoint && !hasValueMappings && !hasConditions) {
+    //   return null;
+    // }
+    
     // Check if the field already has value mappings from the API response
     const hasExistingConditions = field.conditions && field.conditions.length > 0;
-    const hasValueMappings = field.field.valueMappings && field.field.valueMappings.length > 0;
     
     // Only fetch options if needed
     const hasFieldOptions = field.field.endpointURL && fieldOptionsMap[field.field.endpointURL]?.length > 0;
@@ -513,9 +728,20 @@ const CompanyConfiguration = () => {
 
     return (
       <AccordionItem key={field.id} value={`field-${field.id}`} className="border border-gray-200 rounded-md overflow-hidden mb-4 shadow-sm">
-        <AccordionTrigger className="px-4 py-3 bg-gradient-to-r from-blue-50 to-white hover:bg-blue-100">
-          <span className="font-medium text-gray-700">{field.field.label}</span>
-        </AccordionTrigger>
+        <div className="flex items-center px-4 py-3 bg-gradient-to-r from-blue-50 to-white hover:bg-blue-100">
+          <div className="flex items-center mr-4">
+            <Switch 
+              id={`field-active-${field.id}`}
+              checked={field.isActive}
+              onCheckedChange={(checked) => updateFieldActive(section.id, field.id, checked)}
+            />
+          </div>
+          <AccordionTrigger className="flex-1">
+            <span className={`font-medium ${field.isActive ? 'text-gray-700' : 'text-gray-400'}`}>
+              {field.field.label}
+            </span>
+          </AccordionTrigger>
+        </div>
         <AccordionContent className="px-4 py-3">
           <div className="mb-4">
             {isLoading ? (
@@ -525,13 +751,46 @@ const CompanyConfiguration = () => {
             ) : hasExistingConditions ? (
               // Use existing conditions from the API response
               <div>
-                <h5 className="font-medium text-gray-700 mb-4">Field Conditions Configuration</h5>
-                {field.conditions?.map((condition) => renderFieldValue(condition, field, section))}
+                <div className="flex justify-between items-center mb-4">
+                  <h5 className="font-medium text-gray-700">Field Conditions Configuration</h5>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-1"
+                    onClick={() => openAddValueDialog(section.id, field.id)}
+                  >
+                    <Plus className="h-4 w-4" /> Add Value
+                  </Button>
+                </div>
+                {field.conditions.map((condition) => renderFieldValue(condition, field, section))}
+                
+                {field.conditions.length === 0 && (
+                  <div className="text-center bg-gray-50 p-6 rounded-lg border border-dashed border-gray-300">
+                    <p className="text-gray-500 mb-4">No conditions configured for this field</p>
+                    <Button 
+                      variant="outline" 
+                      onClick={() => openAddValueDialog(section.id, field.id)}
+                      className="flex items-center gap-1"
+                    >
+                      <Plus className="h-4 w-4" /> Add Field Value
+                    </Button>
+                  </div>
+                )}
               </div>
             ) : hasValueMappings ? (
               // Use value mappings to create conditions if none exist
               <div>
-                <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
+                <div className="flex justify-between items-center mb-4">
+                  <h5 className="font-medium text-gray-700">Field Values Configuration</h5>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-1"
+                    onClick={() => openAddValueDialog(section.id, field.id)}
+                  >
+                    <Plus className="h-4 w-4" /> Add Value
+                  </Button>
+                </div>
                 {field.field.valueMappings?.map((mapping) => {
                   // Create a new condition based on the value mapping
                   const newCondition: RiskCompanyFieldCondition = {
@@ -573,7 +832,17 @@ const CompanyConfiguration = () => {
             ) : hasFieldOptions ? (
               // Use options from the secondary API call if no conditions or value mappings
               <div>
-                <h5 className="font-medium text-gray-700 mb-4">Field Values Configuration</h5>
+                <div className="flex justify-between items-center mb-4">
+                  <h5 className="font-medium text-gray-700">Field Values Configuration</h5>
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    className="flex items-center gap-1"
+                    onClick={() => openAddValueDialog(section.id, field.id)}
+                  >
+                    <Plus className="h-4 w-4" /> Add Value
+                  </Button>
+                </div>
                 {fieldOptionsMap[field.field.endpointURL!].map((option) => {
                   // Create a new condition from API options
                   const newCondition: RiskCompanyFieldCondition = {
@@ -618,12 +887,22 @@ const CompanyConfiguration = () => {
                 })}
               </div>
             ) : (
-              <div className="text-center text-gray-500 p-4 border border-dashed rounded-md">
-                {field.field.endpointURL ? (
-                  <p>No field values available from API endpoint</p>
-                ) : (
-                  <p>This field does not have an API endpoint configured</p>
-                )}
+              <div className="flex flex-col items-center justify-center text-gray-500 p-6 border border-dashed rounded-md">
+                <div className="mb-4 text-center">
+                  {hasEndpoint ? (
+                    <p>No field values available from API endpoint</p>
+                  ) : (
+                    <p>This field doesn't have a predefined list of values</p>
+                  )}
+                </div>
+                
+                <Button 
+                  variant="outline" 
+                  onClick={() => openAddValueDialog(section.id, field.id)}
+                  className="flex items-center gap-1"
+                >
+                  <Plus className="h-4 w-4" /> Add Custom Value
+                </Button>
               </div>
             )}
           </div>
@@ -645,8 +924,10 @@ const CompanyConfiguration = () => {
       <PageHeader
         title="Risk Configuration"
         description="Configure risk scoring parameters and rules"
-        actionLabel="Save Changes"
+        actionLabel={isSaving ? undefined : "Save Changes"}
         onAction={handleSaveConfiguration}
+        actionIcon={saveSuccess ? <CheckCircle2 className="h-5 w-5" /> : <Save className="h-5 w-5" />}
+        actionDisabled={isSaving || !isValidWeightage()}
       />
 
       {/* Company selection */}
@@ -717,7 +998,7 @@ const CompanyConfiguration = () => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                   <Label htmlFor="config-name" className="text-gray-700">Configuration Name</Label>
                   <Input
@@ -725,16 +1006,6 @@ const CompanyConfiguration = () => {
                     value={configuration.name}
                     onChange={(e) => setConfiguration({ ...configuration, name: e.target.value })}
                     className="mt-1 border-gray-200 focus:border-blue-400 bg-white"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="company-id" className="text-gray-700">Company ID</Label>
-                  <Input
-                    id="company-id"
-                    type="number"
-                    value={configuration.companyId || ''}
-                    disabled={true} // Make this read-only since we're selecting from dropdown
-                    className="mt-1 border-gray-200 focus:border-blue-400 bg-white opacity-70"
                   />
                 </div>
                 <div>
@@ -762,7 +1033,7 @@ const CompanyConfiguration = () => {
                     <TabsTrigger 
                       key={section.id} 
                       value={index.toString()} 
-                      className="whitespace-nowrap py-2 px-4 font-medium text-gray-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                      className={`whitespace-nowrap py-2 px-4 font-medium text-gray-700 data-[state=active]:bg-blue-600 data-[state=active]:text-white ${!section.isActive ? 'opacity-60' : ''}`}
                     >
                       {section.section?.sectionName} ({section.weightage}%)
                     </TabsTrigger>
@@ -775,23 +1046,36 @@ const CompanyConfiguration = () => {
                   <Card className="border-gray-200 shadow-md">
                     <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
                       <div className="flex justify-between items-center">
-                        <div>
-                          <CardTitle className="text-gray-800">{section.section?.sectionName}</CardTitle>
-                          <CardDescription className="text-gray-600">
-                            Section Weightage: {section.weightage}%
-                          </CardDescription>
+                        <div className="flex items-center gap-4">
+                          <Switch 
+                            id={`section-active-${section.id}`}
+                            checked={section.isActive}
+                            onCheckedChange={(checked) => updateSectionActive(section.id, checked)}
+                            className="data-[state=checked]:bg-blue-600"
+                          />
+                          <div>
+                            <CardTitle className={`text-gray-800 ${!section.isActive ? 'text-gray-400' : ''}`}>
+                              {section.section?.sectionName}
+                            </CardTitle>
+                            <CardDescription className="text-gray-600">
+                              Section Weightage: {section.weightage}%
+                            </CardDescription>
+                          </div>
                         </div>
                         {/* Show a badge with the weight contribution */}
                         <div className={`px-3 py-1 rounded-full text-sm font-medium ${
+                          !section.isActive ? 'bg-gray-100 text-gray-500' :
                           isValidWeightage() ? 'bg-green-100 text-green-800' : 'bg-amber-100 text-amber-800'
                         }`}>
-                          {isValidWeightage() 
-                            ? `${section.weightage}% of 100%` 
-                            : `${section.weightage}% of ${calculateTotalWeight()}%`}
+                          {section.isActive 
+                            ? isValidWeightage() 
+                              ? `${section.weightage}% of 100%` 
+                              : `${section.weightage}% of ${calculateTotalWeight()}%`
+                            : "Inactive"}
                         </div>
                       </div>
                     </CardHeader>
-                    <CardContent className="pt-6">
+                    <CardContent className={`pt-6 ${!section.isActive ? 'opacity-60' : ''}`}>
                       <div className="mb-8 bg-white p-4 rounded-lg shadow-sm border border-gray-100">
                         <Label htmlFor={`section-weightage-${section.id}`} className="mb-1 block text-gray-700 font-medium">
                           Section Weightage: {section.weightage}%
@@ -803,6 +1087,7 @@ const CompanyConfiguration = () => {
                           max={100}
                           step={1}
                           className="my-2"
+                          disabled={!section.isActive}
                           onValueChange={([value]) => updateSectionWeightage(section.id, value)}
                         />
                         <div className="flex justify-between items-center">
@@ -814,7 +1099,13 @@ const CompanyConfiguration = () => {
                         </div>
                       </div>
 
-                      <h3 className="text-lg font-medium mb-4 text-gray-700 border-b border-gray-200 pb-2">Fields</h3>
+                      <h3 className="text-lg font-medium mb-4 text-gray-700 border-b border-gray-200 pb-2 flex items-center justify-between">
+                        <span>Fields</span>
+                        <span className="text-sm font-normal text-gray-500">
+                          {section.fields?.filter(f => f.isActive).length || 0} of {section.fields?.length || 0} active
+                        </span>
+                      </h3>
+                      
                       <Accordion type="multiple" className="space-y-2">
                         {section.fields?.map(field => renderField(field, section))}
                       </Accordion>
@@ -843,9 +1134,58 @@ const CompanyConfiguration = () => {
                 <div className="flex items-center gap-2">
                   <LoadingSpinner size="sm" color="white" /> Saving...
                 </div>
-              ) : isValidWeightage() ? "Save Configuration" : "Adjust Weights to 100%"}
+              ) : (
+                <div className="flex items-center gap-2">
+                  <Save className="h-4 w-4" />
+                  {isValidWeightage() ? "Save Configuration" : "Adjust Weights to 100%"}
+                </div>
+              )}
             </Button>
           </div>
+          
+          {/* Dialog for adding new field values */}
+          <Dialog open={showAddValueDialog} onOpenChange={setShowAddValueDialog}>
+            <DialogContent className="sm:max-w-[425px]">
+              <DialogHeader>
+                <DialogTitle>Add New Field Value</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="value-text" className="text-right">
+                    Text
+                  </Label>
+                  <Input
+                    id="value-text"
+                    value={newValueData.text}
+                    onChange={(e) => setNewValueData({...newValueData, text: e.target.value})}
+                    className="col-span-3"
+                    placeholder="Display text"
+                  />
+                </div>
+                <div className="grid grid-cols-4 items-center gap-4">
+                  <Label htmlFor="value-id" className="text-right">
+                    Value
+                  </Label>
+                  <Input
+                    id="value-id"
+                    type="number"
+                    value={newValueData.value}
+                    onChange={(e) => setNewValueData({...newValueData, value: Number(e.target.value)})}
+                    className="col-span-3"
+                    placeholder="Numeric value"
+                  />
+                </div>
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setShowAddValueDialog(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={addNewFieldValue}>
+                  Add Value
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </>
       )}
     </div>

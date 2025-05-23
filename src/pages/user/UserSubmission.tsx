@@ -9,6 +9,8 @@ import { Progress } from "@/components/ui/progress";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
+import { AlertTriangle, CheckCircle, ChevronLeft, ChevronRight } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionFieldsList from "@/components/SectionFieldsList";
@@ -27,7 +29,6 @@ import {
   RiskField,
   Company
 } from "@/types/risk";
-import { ChevronLeft, ChevronRight } from "lucide-react";
 
 interface FormData {
   [key: number]: {
@@ -53,6 +54,7 @@ const UserSubmission = () => {
   const [companyId, setCompanyId] = useState<string>("");
   const [companies, setCompanies] = useState<Company[]>([]);
   const [loadingCompanies, setLoadingCompanies] = useState<boolean>(true);
+  const [submissionSuccess, setSubmissionSuccess] = useState<boolean>(false);
   
   const userId = 1; // Mock user ID, would come from auth context in a real app
   const navigate = useNavigate();
@@ -305,16 +307,21 @@ const UserSubmission = () => {
     
     setSubmitting(true);
     try {
-      // Submit data to API
+      // First try the API call
       const response = await submitUserData(submission);
       if (response.isSuccess) {
+        setSubmissionSuccess(true);
+        
         toast({
           title: "Success",
           description: "Your information has been submitted successfully"
         });
         
-        // Navigate to the dashboard to see results
-        navigate("/user/dashboard");
+        // Wait a moment to show the success state
+        setTimeout(() => {
+          // Navigate to the dashboard to see results
+          navigate("/user/dashboard");
+        }, 2000);
       } else {
         toast({
           title: "Error",
@@ -358,7 +365,7 @@ const UserSubmission = () => {
       />
 
       {/* Company ID Dropdown */}
-      <Card className="mb-6 card-elevated">
+      <Card className="mb-6 card-elevated shadow-md border-gray-200">
         <CardContent className="pt-6">
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -406,6 +413,16 @@ const UserSubmission = () => {
         </CardContent>
       </Card>
 
+      {submissionSuccess && (
+        <Alert className="mb-6 animate-fade-in bg-green-50 border-green-200">
+          <CheckCircle className="h-5 w-5 text-green-600" />
+          <AlertTitle className="text-green-800">Submission Successful!</AlertTitle>
+          <AlertDescription className="text-green-700">
+            Your risk assessment has been submitted successfully. Redirecting to dashboard...
+          </AlertDescription>
+        </Alert>
+      )}
+
       {!configuration && !loading && (
         <div className="text-center py-8">
           <h3 className="text-xl font-medium mb-2">Please Select a Company</h3>
@@ -420,12 +437,12 @@ const UserSubmission = () => {
           className="space-y-4"
         >
           <div className="overflow-x-auto pb-2">
-            <TabsList className="h-auto p-1 inline-flex flex-nowrap min-w-full">
+            <TabsList className="h-auto p-1 inline-flex flex-nowrap min-w-full bg-blue-50 rounded-t-md">
               {getActiveSections().map((section, index) => (
                 <TabsTrigger 
                   key={section.id} 
                   value={index.toString()}
-                  className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-50 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
+                  className="py-2 px-4 whitespace-nowrap transition-all hover:bg-blue-100 data-[state=active]:bg-blue-600 data-[state=active]:text-white"
                 >
                   {section.section?.sectionName}
                 </TabsTrigger>
@@ -435,8 +452,8 @@ const UserSubmission = () => {
 
           {getActiveSections().map((section, index) => (
             <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
-              <Card className="card-elevated">
-                <CardHeader>
+              <Card className="card-elevated shadow-md border-gray-200">
+                <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
                   <CardTitle className="text-blue-800">{section.section?.sectionName}</CardTitle>
                   <CardDescription>
                     Please provide accurate information for this section
@@ -469,10 +486,14 @@ const UserSubmission = () => {
                     {parseInt(activeSection) === getActiveSections().length - 1 ? (
                       <Button 
                         onClick={handleSubmit}
-                        disabled={submitting}
+                        disabled={submitting || submissionSuccess}
                         className="bg-blue-600 hover:bg-blue-700 transition-colors"
                       >
-                        {submitting ? "Submitting..." : "Submit Application"}
+                        {submitting ? (
+                          <div className="flex items-center gap-2">
+                            <LoadingSpinner size="sm" color="white" /> Submitting...
+                          </div>
+                        ) : "Submit Application"}
                       </Button>
                     ) : (
                       <Button
