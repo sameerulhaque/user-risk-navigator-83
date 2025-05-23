@@ -20,7 +20,16 @@ import {
   Company,
   VersionHistory
 } from '@/types/risk';
-import { mockRiskConfiguration, mockDropdownData, mockUsers, mockRiskScore, mockCompanies, mockSections, mockFields, mockCompanySections, mockVersionHistory } from './mockData';
+import { 
+  mockCompanies, 
+  mockSections, 
+  mockFields, 
+  mockCompanySections, 
+  mockUsers, 
+  mockRiskScore, 
+  mockVersionHistory,
+  mockDropdownData 
+} from './mockData';
 
 // Create axios instance with base configurations
 const api = axios.create({
