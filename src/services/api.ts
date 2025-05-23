@@ -146,6 +146,7 @@ export const getCompanies = async (tenantId: string = 'tenant1'): Promise<ApiRes
     return response.data;
   } catch (error) {
     console.log('Falling back to mock companies:', error);
+    // Ensure we're returning the mock company data
     return successResponse(mockCompanies);
   }
 };

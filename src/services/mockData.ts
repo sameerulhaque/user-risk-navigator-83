@@ -1,26 +1,15 @@
-
 // Add the following to the existing mockData.ts file
 
 import { VersionHistory } from '@/types/risk';
 import { RiskScore, Company, UserProfile, RiskSection, RiskField, RiskCompanySection, RiskFieldValueMapping } from '@/types/risk';
 
 // Basic mock companies
-export const mockCompanies: Company[] = [
-  {
-    id: 1,
-    name: "Company A",
-    configId: 1
-  },
-  {
-    id: 2,
-    name: "Company B",
-    configId: 2
-  },
-  {
-    id: 3,
-    name: "Company C",
-    configId: 3
-  }
+export const mockCompanies = [
+  { id: 1, name: 'Acme Corp', domain: 'acmecorp.com', industry: 'Manufacturing', configId: 101 },
+  { id: 2, name: 'Globex Industries', domain: 'globexind.com', industry: 'Technology', configId: 102 },
+  { id: 3, name: 'Initech LLC', domain: 'initech.net', industry: 'Finance', configId: 103 },
+  { id: 4, name: 'Umbrella Corporation', domain: 'umbrella.org', industry: 'Healthcare', configId: 104 },
+  { id: 5, name: 'Stark Industries', domain: 'stark-ind.com', industry: 'Defense', configId: 105 }
 ];
 
 // Mock sections data
@@ -169,24 +158,33 @@ export const mockCompanySections: RiskCompanySection[] = [
 ];
 
 // Mock dropdown data for API endpoints
-export const mockDropdownData: Record<string, {id: number; label: string}[]> = {
+export const mockDropdownData = {
   '/api/countries': [
-    {id: 1, label: 'United States'},
-    {id: 2, label: 'Canada'},
-    {id: 3, label: 'United Kingdom'},
-    {id: 4, label: 'Australia'}
+    { id: 1, label: 'United States' },
+    { id: 2, label: 'Canada' },
+    { id: 3, label: 'United Kingdom' },
+    { id: 4, label: 'Australia' },
+    { id: 5, label: 'Germany' }
+  ],
+  '/api/states': [
+    { id: 1, label: 'California' },
+    { id: 2, label: 'New York' },
+    { id: 3, label: 'Texas' },
+    { id: 4, label: 'Florida' },
+    { id: 5, label: 'Washington' }
+  ],
+  '/api/risk-levels': [
+    { id: 1, label: 'Low' },
+    { id: 2, label: 'Medium' },
+    { id: 3, label: 'High' },
+    { id: 4, label: 'Critical' }
   ],
   '/api/industries': [
-    {id: 1, label: 'Technology'},
-    {id: 2, label: 'Finance'},
-    {id: 3, label: 'Healthcare'},
-    {id: 4, label: 'Education'}
-  ],
-  '/api/company-types': [
-    {id: 1, label: 'Small Business'},
-    {id: 2, label: 'Corporation'},
-    {id: 3, label: 'Non-Profit'},
-    {id: 4, label: 'Government'}
+    { id: 1, label: 'Technology' },
+    { id: 2, label: 'Finance' },
+    { id: 3, label: 'Healthcare' },
+    { id: 4, label: 'Manufacturing' },
+    { id: 5, label: 'Retail' }
   ]
 };
 

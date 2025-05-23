@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -65,13 +64,23 @@ const UserSubmission = () => {
     const fetchCompanies = async () => {
       setLoadingCompanies(true);
       try {
+        console.log("Fetching companies...");
         const response = await getCompanies();
+        console.log("Company response:", response);
         if (response.isSuccess && response.value) {
           setCompanies(response.value);
           // Auto-select the first company if available
           if (response.value.length > 0) {
             setCompanyId(response.value[0].id.toString());
+            console.log("Auto-selected company ID:", response.value[0].id.toString());
           }
+        } else {
+          console.error("Failed to fetch companies:", response);
+          toast({
+            title: "Error",
+            description: "Failed to fetch available companies",
+            variant: "destructive"
+          });
         }
       } catch (error) {
         console.error('Failed to fetch companies:', error);
@@ -182,7 +191,7 @@ const UserSubmission = () => {
         }
       });
     });
-
+    
     const percentage = totalRequiredFields > 0
       ? Math.floor((completedRequiredFields / totalRequiredFields) * 100)
       : 0;
@@ -386,11 +395,17 @@ const UserSubmission = () => {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      {companies.map((company) => (
-                        <SelectItem key={company.id} value={company.id.toString()}>
-                          {company.name}
+                      {companies && companies.length > 0 ? (
+                        companies.map((company) => (
+                          <SelectItem key={company.id} value={company.id.toString()}>
+                            {company.name}
+                          </SelectItem>
+                        ))
+                      ) : (
+                        <SelectItem value="no-options" disabled>
+                          No companies available
                         </SelectItem>
-                      ))}
+                      )}
                     </SelectGroup>
                   </SelectContent>
                 </Select>
