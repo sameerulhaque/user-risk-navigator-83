@@ -110,9 +110,9 @@ export function calculateRiskScore(
 // Convert RiskUserAssessment to the legacy RiskScore format
 export function convertToLegacyRiskScore(assessment: RiskUserAssessment): RiskScore {
   const sectionScores = assessment.sectionScores?.map(sectionScore => {
-    // Handle the case when companySection navigation property is not loaded
-    const sectionId = sectionScore.companySection?.id || sectionScore.companySectionId;
-    const sectionName = sectionScore.companySection?.section?.sectionName || 'Unknown Section';
+    // Access companySectionId directly since companySection is not available
+    const sectionId = sectionScore.companySectionId;
+    const sectionName = sectionScore.sectionName || 'Unknown Section';
     
     return {
       sectionId,
@@ -124,9 +124,9 @@ export function convertToLegacyRiskScore(assessment: RiskUserAssessment): RiskSc
 
   return {
     userId: assessment.userId,
-    totalScore: assessment.totalScore,
+    totalScore: assessment.totalScore || 0,
     sectionScores,
-    status: assessment.status as 'Pending' | 'Approved' | 'Rejected',
+    status: assessment.status || 'Pending',
     createdAt: new Date().toISOString(), // Use actual dates if available in the assessment
     updatedAt: new Date().toISOString()
   };

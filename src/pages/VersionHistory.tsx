@@ -188,9 +188,9 @@ const VersionHistory = () => {
                           </TableCell>
                           <TableCell>
                             <Badge 
-                              variant={item.changes.includes("Approved") ? "success" : 
-                                     item.changes.includes("Rejected") ? "destructive" : "default"}
-                              className="capitalize"
+                              variant={item.changes.includes("Approved") ? "default" : 
+                                     item.changes.includes("Rejected") ? "destructive" : "outline"}
+                              className={`capitalize ${item.changes.includes("Approved") ? "bg-green-100 text-green-800" : ""}`}
                             >
                               {item.changes.includes("Approved") ? "Approved" : 
                                item.changes.includes("Rejected") ? "Rejected" : "Pending"}
