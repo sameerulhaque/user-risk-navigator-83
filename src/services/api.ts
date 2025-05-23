@@ -1,3 +1,4 @@
+
 import axios from 'axios';
 import { ApiResponse, PaginatedResponse, getDefaultHeaders, getPaginationHeaders } from '@/types/api';
 import { 
@@ -179,9 +180,23 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
     const response = await api.get<ApiResponse<RiskConfiguration>>(`/risk/configuration/company/${companyIdNumber}`, {
       headers: getDefaultHeaders(tenantId)
     });
-    if (!response.data?.isSuccess) {
+    
+    // Validate the response structure more thoroughly
+    if (!response.data) {
+      console.error('API returned empty response');
+      throw new Error('Empty API response');
+    }
+    
+    if (!response.data.isSuccess) {
+      console.error('API returned unsuccessful response:', response.data);
       throw new Error('API returned unsuccessful response');
     }
+    
+    if (!response.data.value) {
+      console.error('API response missing value property:', response.data);
+      throw new Error('API response missing value property');
+    }
+    
     return response.data;
   } catch (error) {
     console.log('Falling back to mock configuration:', error);
@@ -191,6 +206,8 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
 
     // Find company from mock data
     const company = mockCompanies.find(c => c.id === companyIdNumber) || mockCompanies[0];
+    
+    console.log(`Creating configuration for company: ${company.name} (ID: ${company.id})`);
     
     // Get mock configuration
     const mockConfig: RiskConfiguration = {
@@ -206,6 +223,8 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
     
     // If no configuration exists yet for this company, create default one with all sections and fields active
     if (configSections.length === 0) {
+      console.log(`No configuration found for company ${company.id}, creating default configuration with all sections`);
+      
       // Create default configuration with all sections and fields active
       mockConfig.companySections = mockSections.map(section => {
         const companySection: RiskCompanySection = {
@@ -250,7 +269,11 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
         
         return companySection;
       });
+      
+      console.log(`Created default configuration with ${mockConfig.companySections.length} sections`);
     } else {
+      console.log(`Found existing configuration with ${configSections.length} sections for company ${company.id}`);
+      
       // Connect related data for existing configuration
       mockConfig.companySections = configSections.map(section => {
         // Connect section reference
@@ -275,6 +298,7 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
       });
     }
     
+    console.log(`Returning configuration with ${mockConfig.companySections.length} sections`);
     // Return the populated configuration object
     return successResponse(mockConfig);
   }

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
@@ -10,7 +9,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert";
-import { AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, RefreshCw } from "lucide-react";
+import { AlertTriangle, CheckCircle, ChevronLeft, ChevronRight, RefreshCw, Info } from "lucide-react";
 import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import SectionFieldsList from "@/components/SectionFieldsList";
@@ -117,36 +116,56 @@ const UserSubmission = () => {
         if (response.isSuccess && response.value) {
           setConfiguration(response.value);
           
-          // Initialize form data structure for active company sections
-          const initialFormData: FormData = {};
+          // Check if configuration has active sections
           const activeSections = response.value.companySections?.filter(s => s.isActive) || [];
           
-          activeSections.forEach(section => {
-            initialFormData[section.id] = {};
+          if (activeSections.length === 0) {
+            console.log("No active sections found in configuration");
+            toast({
+              title: "Information",
+              description: "This company doesn't have any active form sections configured yet",
+              variant: "default"
+            });
+          } else {
+            console.log(`Found ${activeSections.length} active sections`);
             
-            // Only include active fields
-            const activeFields = section.fields?.filter(f => f.isActive) || [];
-            activeFields.forEach(field => {
-              // Use a sensible default value based on field type
-              let defaultValue;
-              if (field.field) {
-                switch (field.field.fieldType) {
-                  case 'number': defaultValue = ""; break;
-                  case 'checkbox': defaultValue = false; break;
-                  case 'date': defaultValue = ""; break;
-                  case 'select': defaultValue = ""; break;
-                  default: defaultValue = ""; break;
-                }
+            // Initialize form data structure for active company sections
+            const initialFormData: FormData = {};
+            
+            activeSections.forEach(section => {
+              initialFormData[section.id] = {};
+              
+              // Only include active fields
+              const activeFields = section.fields?.filter(f => f.isActive) || [];
+              
+              if (activeFields.length === 0) {
+                console.log(`No active fields found for section ${section.section?.sectionName}`);
+              } else {
+                console.log(`Found ${activeFields.length} active fields for section ${section.section?.sectionName}`);
                 
-                initialFormData[section.id][field.field.id] = defaultValue;
+                activeFields.forEach(field => {
+                  // Use a sensible default value based on field type
+                  let defaultValue;
+                  if (field.field) {
+                    switch (field.field.fieldType) {
+                      case 'number': defaultValue = ""; break;
+                      case 'checkbox': defaultValue = false; break;
+                      case 'date': defaultValue = ""; break;
+                      case 'select': defaultValue = ""; break;
+                      default: defaultValue = ""; break;
+                    }
+                    
+                    initialFormData[section.id][field.field.id] = defaultValue;
+                  }
+                });
               }
             });
-          });
-          
-          setFormData(initialFormData);
-          
-          // Load options for all dropdown fields
-          await loadAllDropdownOptions(response.value);
+            
+            setFormData(initialFormData);
+            
+            // Load options for all dropdown fields
+            await loadAllDropdownOptions(response.value);
+          }
         } else {
           console.error("Failed to load configuration or empty response:", response);
           toast({
@@ -483,7 +502,17 @@ const UserSubmission = () => {
         </div>
       )}
 
-      {configuration && (
+      {configuration && getActiveSections().length === 0 && (
+        <Alert className="mb-6 animate-fade-in bg-blue-50 border-blue-200">
+          <Info className="h-5 w-5 text-blue-600" />
+          <AlertTitle className="text-blue-800">No Form Configuration Available</AlertTitle>
+          <AlertDescription className="text-blue-700">
+            This company hasn't configured any active form sections yet. Please contact the company administrator to set up the risk assessment form.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {configuration && getActiveSections().length > 0 && (
         <Tabs
           value={activeSection}
           onValueChange={setActiveSection}
@@ -503,71 +532,85 @@ const UserSubmission = () => {
             </TabsList>
           </div>
 
-          {getActiveSections().map((section, index) => (
-            <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
-              <Card className="card-elevated shadow-md border-gray-200">
-                <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
-                  <CardTitle className="text-blue-800">{section.section?.sectionName}</CardTitle>
-                  <CardDescription>
-                    Please provide accurate information for this section
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <SectionFieldsList
-                    sectionId={section.id}
-                    fields={getActiveFields(section)}
-                    formData={formData[section.id] || {}}
-                    loadingOptions={loadingOptions}
-                    fieldOptions={fieldOptions}
-                    submitting={submitting}
-                    handleInputChange={handleInputChange}
-                  />
-
-                  <div className="flex justify-between mt-8">
-                    <Button
-                      variant="outline"
-                      onClick={() => {
-                        const prevSection = Math.max(0, parseInt(activeSection) - 1);
-                        setActiveSection(prevSection.toString());
-                      }}
-                      disabled={parseInt(activeSection) === 0 || submitting}
-                      className="border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
-                    >
-                      <ChevronLeft className="mr-1 h-4 w-4" /> Previous
-                    </Button>
-                    
-                    {parseInt(activeSection) === getActiveSections().length - 1 ? (
-                      <Button 
-                        onClick={handleSubmit}
-                        disabled={submitting || submissionSuccess}
-                        className="bg-blue-600 hover:bg-blue-700 transition-colors"
-                      >
-                        {submitting ? (
-                          <div className="flex items-center gap-2">
-                            <LoadingSpinner size="sm" color="white" /> Submitting...
-                          </div>
-                        ) : "Submit Application"}
-                      </Button>
+          {getActiveSections().map((section, index) => {
+            const activeFields = getActiveFields(section);
+            
+            return (
+              <TabsContent key={section.id} value={index.toString()} className="animate-fade-in">
+                <Card className="card-elevated shadow-md border-gray-200">
+                  <CardHeader className="bg-gradient-to-r from-blue-50 to-white">
+                    <CardTitle className="text-blue-800">{section.section?.sectionName}</CardTitle>
+                    <CardDescription>
+                      Please provide accurate information for this section
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    {activeFields.length === 0 ? (
+                      <Alert className="mb-6 animate-fade-in bg-blue-50 border-blue-200">
+                        <Info className="h-5 w-5 text-blue-600" />
+                        <AlertTitle className="text-blue-800">No Active Fields</AlertTitle>
+                        <AlertDescription className="text-blue-700">
+                          This section doesn't have any active fields configured yet.
+                        </AlertDescription>
+                      </Alert>
                     ) : (
-                      <Button
-                        onClick={() => {
-                          const nextSection = Math.min(
-                            getActiveSections().length - 1,
-                            parseInt(activeSection) + 1
-                          );
-                          setActiveSection(nextSection.toString());
-                        }}
-                        disabled={submitting}
-                        className="bg-blue-600 hover:bg-blue-700 transition-colors"
-                      >
-                        Next <ChevronRight className="ml-1 h-4 w-4" />
-                      </Button>
+                      <SectionFieldsList
+                        sectionId={section.id}
+                        fields={activeFields}
+                        formData={formData[section.id] || {}}
+                        loadingOptions={loadingOptions}
+                        fieldOptions={fieldOptions}
+                        submitting={submitting}
+                        handleInputChange={handleInputChange}
+                      />
                     )}
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          ))}
+
+                    <div className="flex justify-between mt-8">
+                      <Button
+                        variant="outline"
+                        onClick={() => {
+                          const prevSection = Math.max(0, parseInt(activeSection) - 1);
+                          setActiveSection(prevSection.toString());
+                        }}
+                        disabled={parseInt(activeSection) === 0 || submitting}
+                        className="border-blue-200 hover:bg-blue-50 hover:text-blue-700 transition-colors"
+                      >
+                        <ChevronLeft className="mr-1 h-4 w-4" /> Previous
+                      </Button>
+                      
+                      {parseInt(activeSection) === getActiveSections().length - 1 ? (
+                        <Button 
+                          onClick={handleSubmit}
+                          disabled={submitting || submissionSuccess || activeFields.length === 0}
+                          className="bg-blue-600 hover:bg-blue-700 transition-colors"
+                        >
+                          {submitting ? (
+                            <div className="flex items-center gap-2">
+                              <LoadingSpinner size="sm" color="white" /> Submitting...
+                            </div>
+                          ) : "Submit Application"}
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            const nextSection = Math.min(
+                              getActiveSections().length - 1,
+                              parseInt(activeSection) + 1
+                            );
+                            setActiveSection(nextSection.toString());
+                          }}
+                          disabled={submitting}
+                          className="bg-blue-600 hover:bg-blue-700 transition-colors"
+                        >
+                          Next <ChevronRight className="ml-1 h-4 w-4" />
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              </TabsContent>
+            );
+          })}
         </Tabs>
       )}
     </div>
