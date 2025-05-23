@@ -13,10 +13,11 @@ import CompanyUsers from "@/pages/company/CompanyUsers";
 import UserDashboard from "@/pages/user/UserDashboard";
 import UserSubmission from "@/pages/user/UserSubmission";
 import VersionHistory from "@/pages/VersionHistory";
+import { AuthProvider } from "@/contexts/AuthContext";
 
 function App() {
   return (
-    <>
+    <AuthProvider>
       <Routes>
         <Route path="/" element={<MainLayout />}>
           <Route index element={<Home />} />
@@ -39,7 +40,7 @@ function App() {
         </Route>
       </Routes>
       <Toaster />
-    </>
+    </AuthProvider>
   );
 }
 
