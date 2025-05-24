@@ -1,4 +1,3 @@
-
 import axios from 'axios';
 import { ApiResponse, PaginatedResponse, getDefaultHeaders, getPaginationHeaders } from '@/types/api';
 import { 
@@ -615,5 +614,186 @@ export const getVersionHistory = async (
     
     console.log('Using mock version history data:', filteredHistory);
     return successResponse(filteredHistory);
+  }
+};
+
+// Mock sanction list data
+const mockSanctionList = [
+  { id: 1, name: "John Smith", type: "Individual", country: "US", dateAdded: "2023-01-15", status: "Active" },
+  { id: 2, name: "ABC Corp", type: "Entity", country: "RU", dateAdded: "2023-02-20", status: "Active" },
+  { id: 3, name: "Jane Doe", type: "Individual", country: "IR", dateAdded: "2023-03-10", status: "Inactive" }
+];
+
+// New API functions for Excel/CSV import
+export const importSectionsFromFile = async (file: File, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskSection[]>> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post<ApiResponse<RiskSection[]>>('/risk/sections/import', formData, {
+      headers: {
+        ...getDefaultHeaders(tenantId),
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock sections import:', error);
+    // Mock success response
+    return successResponse([
+      { id: 100, sectionName: "Imported Section 1", weightage: 25, isActive: true },
+      { id: 101, sectionName: "Imported Section 2", weightage: 30, isActive: true }
+    ]);
+  }
+};
+
+export const importFieldsFromFile = async (file: File, sectionId: number, tenantId: string = 'tenant1'): Promise<ApiResponse<RiskField[]>> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('sectionId', sectionId.toString());
+    
+    const response = await api.post<ApiResponse<RiskField[]>>(`/risk/sections/${sectionId}/fields/import`, formData, {
+      headers: {
+        ...getDefaultHeaders(tenantId),
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock fields import:', error);
+    // Mock success response
+    return successResponse([
+      { id: 200, sectionId, label: "Imported Field 1", fieldType: "text", isRequired: true, endpointURL: "", valueMappings: [] },
+      { id: 201, sectionId, label: "Imported Field 2", fieldType: "select", isRequired: false, endpointURL: "", valueMappings: [] }
+    ]);
+  }
+};
+
+// Enhanced version history with detailed changes
+export const getVersionHistoryDetails = async (versionId: number, tenantId: string = 'tenant1'): Promise<ApiResponse<any>> => {
+  try {
+    const response = await api.get<ApiResponse<any>>(`/risk/version-history/${versionId}/details`, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock version details:', error);
+    // Mock detailed changes
+    return successResponse({
+      id: versionId,
+      changes: {
+        sections: {
+          added: [{ id: 1, name: "New Risk Section" }],
+          modified: [{ id: 2, name: "Updated Compliance Section", changes: ["weightage: 20 -> 25"] }],
+          removed: []
+        },
+        fields: {
+          added: [{ id: 10, sectionId: 1, name: "Credit Score" }],
+          modified: [{ id: 11, sectionId: 2, name: "Income Level", changes: ["required: false -> true"] }],
+          removed: []
+        }
+      }
+    });
+  }
+};
+
+// Sanction list management API functions
+export const getSanctionList = async (
+  page: number = 1,
+  pageSize: number = 10,
+  searchQuery?: { name?: string; type?: string; country?: string },
+  tenantId: string = 'tenant1'
+): Promise<ApiResponse<PaginatedResponse<any>>> => {
+  try {
+    const response = await api.get<ApiResponse<PaginatedResponse<any>>>('/risk/sanctions', {
+      headers: getPaginationHeaders(page, pageSize, searchQuery),
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock sanction list:', error);
+    
+    let filteredSanctions = [...mockSanctionList];
+    
+    if (searchQuery?.name) {
+      filteredSanctions = filteredSanctions.filter(s => 
+        s.name.toLowerCase().includes(searchQuery.name!.toLowerCase())
+      );
+    }
+    
+    if (searchQuery?.type) {
+      filteredSanctions = filteredSanctions.filter(s => s.type === searchQuery.type);
+    }
+    
+    if (searchQuery?.country) {
+      filteredSanctions = filteredSanctions.filter(s => s.country === searchQuery.country);
+    }
+    
+    const start = (page - 1) * pageSize;
+    const end = start + pageSize;
+    const paginatedSanctions = filteredSanctions.slice(start, end);
+    
+    return paginatedSuccessResponse(paginatedSanctions, page, pageSize, filteredSanctions.length);
+  }
+};
+
+export const addSanctionEntry = async (entry: any, tenantId: string = 'tenant1'): Promise<ApiResponse<any>> => {
+  try {
+    const response = await api.post<ApiResponse<any>>('/risk/sanctions', entry, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock sanction add:', error);
+    return successResponse({
+      ...entry,
+      id: Date.now(),
+      dateAdded: new Date().toISOString().split('T')[0]
+    });
+  }
+};
+
+export const updateSanctionEntry = async (id: number, entry: any, tenantId: string = 'tenant1'): Promise<ApiResponse<any>> => {
+  try {
+    const response = await api.put<ApiResponse<any>>(`/risk/sanctions/${id}`, entry, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock sanction update:', error);
+    return successResponse({ ...entry, id });
+  }
+};
+
+export const deleteSanctionEntry = async (id: number, tenantId: string = 'tenant1'): Promise<ApiResponse<boolean>> => {
+  try {
+    const response = await api.delete<ApiResponse<boolean>>(`/risk/sanctions/${id}`, {
+      headers: getDefaultHeaders(tenantId)
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock sanction delete:', error);
+    return successResponse(true);
+  }
+};
+
+export const importSanctionListFromFile = async (file: File, tenantId: string = 'tenant1'): Promise<ApiResponse<any[]>> => {
+  try {
+    const formData = new FormData();
+    formData.append('file', file);
+    
+    const response = await api.post<ApiResponse<any[]>>('/risk/sanctions/import', formData, {
+      headers: {
+        ...getDefaultHeaders(tenantId),
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+    return response.data;
+  } catch (error) {
+    console.log('Falling back to mock sanction import:', error);
+    return successResponse([
+      { id: 100, name: "Imported Person 1", type: "Individual", country: "CN", dateAdded: new Date().toISOString().split('T')[0], status: "Active" },
+      { id: 101, name: "Imported Company 1", type: "Entity", country: "KP", dateAdded: new Date().toISOString().split('T')[0], status: "Active" }
+    ]);
   }
 };

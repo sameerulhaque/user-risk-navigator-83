@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -11,6 +10,8 @@ import PageHeader from "@/components/PageHeader";
 import LoadingSpinner from "@/components/LoadingSpinner";
 import { getVersionHistory } from "@/services/api";
 import { VersionHistory as VersionHistoryType } from "@/types/risk";
+import VersionDetailsModal from "@/components/VersionDetailsModal";
+import { Button } from "@/components/ui/button";
 
 const VersionHistory = () => {
   const [activeTab, setActiveTab] = useState<string>("configuration");
@@ -137,6 +138,7 @@ const VersionHistory = () => {
                         <TableHead>Changes</TableHead>
                         <TableHead>Modified By</TableHead>
                         <TableHead>Date</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -149,6 +151,17 @@ const VersionHistory = () => {
                           <TableCell className="max-w-xs truncate">{item.changes}</TableCell>
                           <TableCell>{item.userName}</TableCell>
                           <TableCell>{new Date(item.timestamp).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <VersionDetailsModal
+                              versionId={item.id}
+                              version={item.version}
+                              entityType={item.entityType}
+                            >
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </VersionDetailsModal>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
@@ -176,6 +189,7 @@ const VersionHistory = () => {
                         <TableHead>Version</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Date</TableHead>
+                        <TableHead>Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -197,6 +211,17 @@ const VersionHistory = () => {
                             </Badge>
                           </TableCell>
                           <TableCell>{new Date(item.timestamp).toLocaleString()}</TableCell>
+                          <TableCell>
+                            <VersionDetailsModal
+                              versionId={item.id}
+                              version={item.version}
+                              entityType={item.entityType}
+                            >
+                              <Button variant="outline" size="sm">
+                                View Details
+                              </Button>
+                            </VersionDetailsModal>
+                          </TableCell>
                         </TableRow>
                       ))}
                     </TableBody>
