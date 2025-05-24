@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,7 +44,7 @@ const SanctionListManagement = () => {
 
   const searchQuery = {
     name: searchName || undefined,
-    type: searchType || undefined,
+    type: (searchType && searchType !== "all") ? searchType : undefined,
     country: searchCountry || undefined
   };
 
@@ -245,7 +244,7 @@ const SanctionListManagement = () => {
                   <SelectValue placeholder="All types" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">All types</SelectItem>
+                  <SelectItem value="all">All types</SelectItem>
                   <SelectItem value="Individual">Individual</SelectItem>
                   <SelectItem value="Entity">Entity</SelectItem>
                 </SelectContent>
