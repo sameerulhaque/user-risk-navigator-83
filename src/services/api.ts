@@ -664,8 +664,28 @@ export const importFieldsFromFile = async (file: File, sectionId: number, tenant
     console.log('Falling back to mock fields import:', error);
     // Mock success response
     return successResponse([
-      { id: 200, sectionId, label: "Imported Field 1", fieldType: "text", isRequired: true, endpointURL: "", valueMappings: [] },
-      { id: 201, sectionId, label: "Imported Field 2", fieldType: "select", isRequired: false, endpointURL: "", valueMappings: [] }
+      { 
+        id: 200, 
+        sectionId, 
+        label: "Imported Field 1", 
+        fieldType: "text", 
+        isRequired: true, 
+        placeholder: "",
+        endpointURL: "", 
+        orderIndex: 1,
+        valueMappings: [] 
+      },
+      { 
+        id: 201, 
+        sectionId, 
+        label: "Imported Field 2", 
+        fieldType: "select", 
+        isRequired: false, 
+        placeholder: "",
+        endpointURL: "", 
+        orderIndex: 2,
+        valueMappings: [] 
+      }
     ]);
   }
 };
