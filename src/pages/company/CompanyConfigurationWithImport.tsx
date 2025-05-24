@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useParams } from "react-router-dom";
@@ -161,8 +160,7 @@ const CompanyConfigurationWithImport = () => {
       isActive: true,
       section: {
         id: Date.now(),
-        sectionName: newSectionName.trim(),
-        orderIndex: (configuration.companySections?.length || 0) + 1
+        sectionName: newSectionName.trim()
       },
       fields: []
     };
@@ -188,7 +186,7 @@ const CompanyConfigurationWithImport = () => {
     const newField: RiskCompanyField = {
       id: Date.now(),
       fieldId: Date.now(),
-      companyId: parseInt(companyId || "1"),
+      companySectionId: selectedSectionForField,
       isActive: true,
       maxScore: 100,
       field: {
