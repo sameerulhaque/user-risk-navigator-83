@@ -161,10 +161,8 @@ export const getCompanies = async (tenantId: string = 'tenant1'): Promise<ApiRes
     return response.data;
   } catch (error) {
     console.log('Falling back to mock companies:', error);
-    // Force a throw to verify fallback works
     console.log('Using mock company data:', mockCompanies);
     
-    // Ensure we're returning the mock company data
     return successResponse(mockCompanies);
   }
 };
@@ -217,88 +215,54 @@ export const getRiskConfiguration = async (companyId?: number | string, tenantId
       companySections: []
     };
     
-    // Add company sections
-    const configSections = mockCompanySections.filter(cs => cs.companyId === company.id);
+    // Create default configuration with all sections and fields active
+    console.log(`Creating default configuration with all sections for company ${company.id}`);
     
-    // If no configuration exists yet for this company, create default one with all sections and fields active
-    if (configSections.length === 0) {
-      console.log(`No configuration found for company ${company.id}, creating default configuration with all sections`);
+    mockConfig.companySections = mockSections.map(section => {
+      const companySection: RiskCompanySection = {
+        id: section.id * 100 + company.id,
+        companyId: company.id,
+        sectionId: section.id,
+        isActive: true,
+        weightage: Math.floor(100 / mockSections.length),
+        section: section,
+        fields: []
+      };
       
-      // Create default configuration with all sections and fields active
-      mockConfig.companySections = mockSections.map(section => {
-        const companySection: RiskCompanySection = {
-          id: section.id * 100 + company.id, // Generate unique ID
-          companyId: company.id,
-          sectionId: section.id,
+      // Add all fields for this section with proper field data
+      const sectionFields = mockFields.filter(f => f.sectionId === section.id);
+      companySection.fields = sectionFields.map(field => {
+        const companyField: RiskCompanyField = {
+          id: field.id * 100 + company.id,
+          companySectionId: companySection.id,
+          fieldId: field.id,
           isActive: true,
-          weightage: Math.floor(100 / mockSections.length), // Distribute weight evenly
-          section: section,
-          fields: []
+          maxScore: 100,
+          field: field, // Make sure field data is included
+          conditions: []
         };
         
-        // Add all fields for this section
-        const sectionFields = mockFields.filter(f => f.sectionId === section.id);
-        companySection.fields = sectionFields.map(field => {
-          const companyField: RiskCompanyField = {
-            id: field.id * 100 + company.id, // Generate unique ID
-            companySectionId: companySection.id,
-            fieldId: field.id,
-            isActive: true,
-            maxScore: 100,
-            field: field,
-            conditions: []
-          };
-          
-          // Add value mappings as conditions if they exist
-          if (field.valueMappings && field.valueMappings.length > 0) {
-            companyField.conditions = field.valueMappings.map(mapping => {
-              return {
-                id: mapping.id * 100 + company.id, // Generate unique ID
-                companyFieldId: companyField.id,
-                fieldValueMappingId: mapping.id,
-                operator: '=',
-                riskScore: 0, // Default score
-                fieldValueMapping: mapping
-              };
-            });
-          }
-          
-          return companyField;
-        });
+        // Add value mappings as conditions if they exist
+        if (field.valueMappings && field.valueMappings.length > 0) {
+          companyField.conditions = field.valueMappings.map(mapping => {
+            return {
+              id: mapping.id * 100 + company.id,
+              companyFieldId: companyField.id,
+              fieldValueMappingId: mapping.id,
+              operator: '=',
+              riskScore: 0,
+              fieldValueMapping: mapping
+            };
+          });
+        }
         
-        return companySection;
+        return companyField;
       });
       
-      console.log(`Created default configuration with ${mockConfig.companySections.length} sections`);
-    } else {
-      console.log(`Found existing configuration with ${configSections.length} sections for company ${company.id}`);
-      
-      // Connect related data for existing configuration
-      mockConfig.companySections = configSections.map(section => {
-        // Connect section reference
-        const sectionData = mockSections.find(s => s.id === section.sectionId);
-        
-        // Connect fields
-        const fields = section.fields?.map(field => {
-          // Connect field reference
-          const fieldData = mockFields.find(f => f.id === field.fieldId);
-          
-          return {
-            ...field,
-            field: fieldData
-          };
-        });
-        
-        return {
-          ...section,
-          section: sectionData,
-          fields: fields
-        };
-      });
-    }
+      return companySection;
+    });
     
-    console.log(`Returning configuration with ${mockConfig.companySections.length} sections`);
-    // Return the populated configuration object
+    console.log(`Created configuration with ${mockConfig.companySections.length} sections`);
     return successResponse(mockConfig);
   }
 };
