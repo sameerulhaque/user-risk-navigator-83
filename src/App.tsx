@@ -9,10 +9,12 @@ import Login from "@/pages/auth/Login";
 import Register from "@/pages/auth/Register";
 import CompanyDashboard from "@/pages/company/CompanyDashboard";
 import CompanyConfiguration from "@/pages/company/CompanyConfiguration";
+import CompanyConfigurationWithImport from "@/pages/company/CompanyConfigurationWithImport";
 import CompanyUsers from "@/pages/company/CompanyUsers";
 import UserDashboard from "@/pages/user/UserDashboard";
 import UserSubmission from "@/pages/user/UserSubmission";
 import VersionHistory from "@/pages/VersionHistory";
+import SanctionListManagement from "@/pages/SanctionListManagement";
 import { AuthProvider } from "@/contexts/AuthContext";
 
 function App() {
@@ -27,9 +29,12 @@ function App() {
           {/* Version History */}
           <Route path="/versioning" element={<VersionHistory />} />
           
+          {/* Sanction List Management */}
+          <Route path="/sanction-list" element={<ProtectedRoute><SanctionListManagement /></ProtectedRoute>} />
+          
           {/* Company Routes */}
           <Route path="/company/dashboard" element={<ProtectedRoute><CompanyDashboard /></ProtectedRoute>} />
-          <Route path="/company/configuration" element={<ProtectedRoute><CompanyConfiguration /></ProtectedRoute>} />
+          <Route path="/company/configuration" element={<ProtectedRoute><CompanyConfigurationWithImport /></ProtectedRoute>} />
           <Route path="/company/users" element={<ProtectedRoute><CompanyUsers /></ProtectedRoute>} />
           
           {/* User Routes */}
